@@ -7,7 +7,11 @@ import com.tencent.kuiklybase.kline.data.KLineBar
 import com.tencent.kuiklybase.kline.data.KLineBarValidator
 import com.tencent.kuiklybase.kline.data.KLineLoadDirection
 import com.tencent.kuiklybase.kline.data.KLinePeriod
+import com.tencent.kuiklybase.kline.data.PersistentKLineBarList
+import com.tencent.kuiklybase.kline.data.emptyPersistentKLineBars
+import com.tencent.kuiklybase.kline.data.persistentKLineBars
 import com.tencent.kuiklybase.kline.data.KLineSymbol
+import com.tencent.kuiklybase.kline.data.exactTimestampIndex
 import com.tencent.kuiklybase.kline.error.KLineError
 import com.tencent.kuiklybase.kline.error.KLineErrorCode
 import com.tencent.kuiklybase.kline.format.KLineFormatters
@@ -17,6 +21,12 @@ import com.tencent.kuiklybase.kline.indicator.KLineIndicatorEngine
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorCalculation
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorResult
+import com.tencent.kuiklybase.kline.indicator.KLineDataChange
+import com.tencent.kuiklybase.kline.indicator.KLineDataChangeKind
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorUpdateContext
+import com.tencent.kuiklybase.kline.indicator.KLinePerformanceKey
+import com.tencent.kuiklybase.kline.indicator.KLinePerformanceTracker
+import com.tencent.kuiklybase.kline.indicator.TrackedKLineBars
 import com.tencent.kuiklybase.kline.interaction.KLineBarSelection
 import com.tencent.kuiklybase.kline.interaction.KLineCrosshair
 import com.tencent.kuiklybase.kline.interaction.KLineInteractionSession
@@ -77,9 +87,14 @@ class KLineStore(
     private val observers = mutableListOf<(KLineStoreSnapshot, KLineStoreSnapshot) -> Unit>()
     private val errorObservers = mutableListOf<(KLineError) -> Unit>()
     private val indicatorEngine = KLineIndicatorEngine(extensionRegistry)
+    private var performanceTracker: KLinePerformanceTracker? = null
 
     var snapshot: KLineStoreSnapshot = KLineStoreSnapshot()
         private set
+
+    internal fun trackPerformance(tracker: KLinePerformanceTracker?) {
+        performanceTracker = tracker
+    }
 
     internal fun observe(
         observer: (previous: KLineStoreSnapshot, current: KLineStoreSnapshot) -> Unit,
@@ -100,7 +115,7 @@ class KLineStore(
         publishData(snapshot.copy(
             symbol = symbol,
             period = period,
-            bars = emptyList(),
+            bars = emptyPersistentKLineBars(),
             hasMoreBefore = false,
             hasMoreAfter = false,
             loadState = KLineLoadState(),
@@ -162,12 +177,7 @@ class KLineStore(
         hasMoreAfter: Boolean = false,
     ) {
         val normalized = normalize(bars)
-        publishData(snapshot.copy(
-            bars = normalized,
-            hasMoreBefore = hasMoreBefore,
-            hasMoreAfter = hasMoreAfter,
-            dataRevision = snapshot.dataRevision + 1,
-        ))
+        updateData(normalized, hasMoreBefore = hasMoreBefore, hasMoreAfter = hasMoreAfter, change = fullChange(snapshot.bars.size, normalized.size))
     }
 
     fun prepend(
@@ -175,44 +185,69 @@ class KLineStore(
         hasMoreBefore: Boolean,
     ): Int {
         val normalized = normalize(bars)
-        val previousFirstTimestamp = snapshot.bars.firstOrNull()?.timestamp
-        val existingTimestamps = snapshot.bars.mapTo(mutableSetOf(), KLineBar::timestamp)
-        val insertedBefore = normalized.count { bar ->
-            bar.timestamp !in existingTimestamps &&
-                (previousFirstTimestamp == null || bar.timestamp < previousFirstTimestamp)
+        val existing = persistentBars(snapshot.bars)
+        if (normalized.isEmpty()) {
+            updateData(existing, hasMoreBefore = hasMoreBefore, change = fullChange(existing.size, existing.size), knownChanged = false)
+            return 0
         }
-        publishData(snapshot.copy(
-            bars = merge(normalized, snapshot.bars),
-            hasMoreBefore = hasMoreBefore,
-            dataRevision = snapshot.dataRevision + 1,
-        ))
-        return insertedBefore
+        val purePrepend = existing.isNotEmpty() && normalized.isNotEmpty() &&
+            requireNotNull(normalized.lastTimestamp) < requireNotNull(existing.firstTimestamp)
+        val merged = if (purePrepend) {
+            performanceTracker?.recordBarFastPathStep()
+            MergeOutcome(
+                existing.prepend(normalized, performanceTracker),
+                KLineDataChange(KLineDataChangeKind.HEAD_PREPEND, 0 until 0, 0 until normalized.size, 0, snapshot.bars.size),
+                changed = true,
+                insertedBefore = normalized.size,
+            )
+        } else merge(existing, normalized, KLineDataChangeKind.HEAD_PREPEND)
+        updateData(merged.bars, hasMoreBefore = hasMoreBefore, change = merged.change, knownChanged = merged.changed)
+        return merged.insertedBefore
     }
 
     fun append(
         bars: List<KLineBar>,
         hasMoreAfter: Boolean,
     ) {
-        publishData(snapshot.copy(
-            bars = merge(snapshot.bars, normalize(bars)),
-            hasMoreAfter = hasMoreAfter,
-            dataRevision = snapshot.dataRevision + 1,
-        ))
+        val normalized = normalize(bars)
+        val existing = persistentBars(snapshot.bars)
+        if (normalized.isEmpty()) {
+            updateData(existing, hasMoreAfter = hasMoreAfter, change = fullChange(existing.size, existing.size), knownChanged = false)
+            return
+        }
+        val pureAppend = existing.isNotEmpty() && normalized.isNotEmpty() &&
+            requireNotNull(normalized.firstTimestamp) > requireNotNull(existing.lastTimestamp)
+        val merged = if (pureAppend) {
+            performanceTracker?.recordBarFastPathStep()
+            MergeOutcome(
+                existing.concat(normalized, performanceTracker),
+                KLineDataChange(KLineDataChangeKind.TAIL_APPEND, snapshot.bars.size until snapshot.bars.size, snapshot.bars.size until snapshot.bars.size + normalized.size, snapshot.bars.size, 0),
+                changed = true,
+                insertedBefore = 0,
+            )
+        } else merge(existing, normalized, KLineDataChangeKind.TAIL_APPEND)
+        updateData(merged.bars, hasMoreAfter = hasMoreAfter, change = merged.change, knownChanged = merged.changed)
     }
 
     fun applyRealtime(bar: KLineBar) {
         if (!accept(bar)) return
-        val tail = snapshot.bars.lastOrNull()
+        val existing = persistentBars(snapshot.bars)
+        val tail = existing.lastTimestamp?.let { existing.get(existing.lastIndex, performanceTracker) }
+        if (tail == bar) return
         val updatedBars = when {
-            tail == null -> listOf(bar)
-            bar.timestamp == tail.timestamp -> snapshot.bars.dropLast(1) + bar
-            bar.timestamp > tail.timestamp -> snapshot.bars + bar
+            tail == null -> persistentKLineBars(listOf(bar), performanceTracker)
+            bar.timestamp == tail.timestamp -> existing.replaceRange(existing.lastIndex, existing.size, listOf(bar), performanceTracker)
+            bar.timestamp > tail.timestamp -> existing.concat(listOf(bar), performanceTracker)
             else -> return
         }
-        publishData(snapshot.copy(
-            bars = updatedBars,
-            dataRevision = snapshot.dataRevision + 1,
-        ))
+        performanceTracker?.recordBarFastPathStep()
+        val oldSize = snapshot.bars.size
+        val change = if (tail?.timestamp == bar.timestamp) {
+            KLineDataChange(KLineDataChangeKind.TAIL_UPDATE, oldSize - 1 until oldSize, oldSize - 1 until oldSize, oldSize - 1, 0)
+        } else {
+            KLineDataChange(KLineDataChangeKind.TAIL_APPEND, oldSize until oldSize, oldSize until oldSize + 1, oldSize, 0)
+        }
+        updateData(updatedBars, change = change, knownChanged = true)
     }
 
     internal fun setViewport(viewport: KLineViewport?) {
@@ -489,23 +524,113 @@ class KLineStore(
         return false
     }
 
-    private fun normalize(bars: List<KLineBar>): List<KLineBar> = bars
-        .filter(::accept)
-        .associateBy(KLineBar::timestamp)
-        .values
-        .sortedBy(KLineBar::timestamp)
+    private fun normalize(bars: List<KLineBar>): PersistentKLineBarList {
+        val sorted = bars.withIndex().filter { accept(it.value) }
+            .sortedWith(compareBy<IndexedValue<KLineBar>> { it.value.timestamp }.thenBy { it.index })
+        val result = ArrayList<KLineBar>(sorted.size)
+        sorted.forEach { indexed ->
+            if (result.lastOrNull()?.timestamp == indexed.value.timestamp) result[result.lastIndex] = indexed.value
+            else result += indexed.value
+        }
+        return persistentKLineBars(result, performanceTracker)
+    }
+
+    private fun persistentBars(bars: List<KLineBar>): PersistentKLineBarList =
+        if (bars is PersistentKLineBarList) bars else persistentKLineBars(bars, null)
 
     private fun merge(
         first: List<KLineBar>,
         second: List<KLineBar>,
-    ): List<KLineBar> = (first + second)
-        .associateBy(KLineBar::timestamp)
-        .values
-        .sortedBy(KLineBar::timestamp)
+        preferredKind: KLineDataChangeKind,
+    ): MergeOutcome {
+        val result = ArrayList<KLineBar>(first.size + second.size)
+        val leftIterator = first.iterator()
+        val rightIterator = second.iterator()
+        var left: KLineBar? = null
+        var right: KLineBar? = null
+        fun takeLeft(): KLineBar? {
+            if (!leftIterator.hasNext()) return null
+            performanceTracker?.recordBarOldItemRead()
+            return leftIterator.next()
+        }
+        fun takeRight(): KLineBar? = if (rightIterator.hasNext()) rightIterator.next() else null
+        left = takeLeft()
+        right = takeRight()
+        var prefix = 0
+        var prefixOpen = true
+        var trailingUnchanged = 0
+        var insertedBefore = 0
+        val previousFirstTimestamp = first.firstOrNull()?.timestamp
+        fun emit(bar: KLineBar, unchangedExisting: Boolean) {
+            if (prefixOpen && unchangedExisting) prefix++ else prefixOpen = false
+            trailingUnchanged = if (unchangedExisting) trailingUnchanged + 1 else 0
+            result += bar
+        }
+        while (left != null || right != null) {
+            performanceTracker?.recordStoreMergeStep()
+            when {
+                right == null || left != null && left!!.timestamp < right!!.timestamp -> {
+                    emit(left!!, true)
+                    left = takeLeft()
+                }
+                left == null || right!!.timestamp < left!!.timestamp -> {
+                    if (previousFirstTimestamp == null || right!!.timestamp < previousFirstTimestamp) insertedBefore++
+                    emit(right!!, false)
+                    right = takeRight()
+                }
+                else -> {
+                    val unchanged = left == right
+                    emit(right!!, unchanged)
+                    left = takeLeft()
+                    right = takeRight()
+                }
+            }
+        }
+        val kind = when {
+            first.isEmpty() && result.isNotEmpty() -> preferredKind
+            prefix == first.size && result.size > first.size -> KLineDataChangeKind.TAIL_APPEND
+            trailingUnchanged == first.size && result.size > first.size -> KLineDataChangeKind.HEAD_PREPEND
+            prefix == first.lastIndex && result.size == first.size -> KLineDataChangeKind.TAIL_UPDATE
+            else -> KLineDataChangeKind.RANGE_UPDATE
+        }
+        return MergeOutcome(persistentKLineBars(result, performanceTracker), KLineDataChange(
+            kind,
+            prefix until (first.size - trailingUnchanged),
+            prefix until (result.size - trailingUnchanged),
+            prefix,
+            trailingUnchanged,
+        ), changed = result.size != first.size || prefix != first.size, insertedBefore = insertedBefore)
+    }
 
-    private fun publishData(next: KLineStoreSnapshot) {
+    private fun updateData(
+        bars: List<KLineBar>,
+        hasMoreBefore: Boolean = snapshot.hasMoreBefore,
+        hasMoreAfter: Boolean = snapshot.hasMoreAfter,
+        change: KLineDataChange,
+        knownChanged: Boolean? = null,
+    ) {
+        val changed = knownChanged ?: !barsEqual(snapshot.bars, bars)
+        if (!changed) {
+            publish(snapshot.copy(hasMoreBefore = hasMoreBefore, hasMoreAfter = hasMoreAfter))
+            return
+        }
+        performanceTracker?.recordStoreChangeStep()
+        val oldBars = snapshot.bars
+        publishData(snapshot.copy(
+            bars = bars,
+            hasMoreBefore = hasMoreBefore,
+            hasMoreAfter = hasMoreAfter,
+            dataRevision = snapshot.dataRevision + 1,
+        ), oldBars, change)
+    }
+
+    private fun publishData(
+        next: KLineStoreSnapshot,
+        oldBars: List<KLineBar> = snapshot.bars,
+        change: KLineDataChange = fullChange(snapshot.bars.size, next.bars.size),
+    ) {
         val crosshair = next.crosshair
-        val matchedIndex = crosshair?.let { value -> next.bars.indexOfFirst { it.timestamp == value.timestamp } }
+        val matchedIndex = crosshair?.let { value -> next.bars.exactTimestampIndex(value.timestamp) }
         val reconciledCrosshair = if (matchedIndex != null && matchedIndex >= 0) crosshair.copy(index = matchedIndex) else null
         val lostActiveCrosshair = crosshair != null && reconciledCrosshair == null && next.interactionState == KLineInteractionState.CROSSHAIR
         val reconciledSession = if (next.interactionState == KLineInteractionState.CROSSHAIR && reconciledCrosshair != null) {
@@ -513,37 +638,69 @@ class KLineStore(
         } else {
             next.interactionSession
         }
-        val indicatorResults = calculateIndicators(next.indicatorInstances, next.bars, next.dataRevision)
+        val indicatorBatch = calculateIndicatorBatch(next.indicatorInstances, next.bars, next.dataRevision, oldBars, change)
         publish(next.copy(
             crosshair = reconciledCrosshair,
             interactionState = if (lostActiveCrosshair) KLineInteractionState.IDLE else next.interactionState,
             interactionSession = if (lostActiveCrosshair) null else reconciledSession,
             interactionRevision = if (crosshair != reconciledCrosshair) next.interactionRevision + 1 else next.interactionRevision,
-            indicatorResults = indicatorResults,
-            indicatorRevision = snapshot.indicatorRevision + if (snapshot.indicatorResults != indicatorResults) 1 else 0,
-        ))
+            indicatorResults = indicatorBatch.results,
+            indicatorRevision = snapshot.indicatorRevision + if (indicatorBatch.changed) 1 else 0,
+        ), force = true)
     }
 
     private fun calculateIndicators(
         instances: List<KLineIndicatorInstance>,
         bars: List<KLineBar>,
         dataRevision: Long,
-    ): Map<String, KLineIndicatorResult> = buildMap {
+        oldBars: List<KLineBar>? = null,
+        change: KLineDataChange? = null,
+    ): Map<String, KLineIndicatorResult> = calculateIndicatorBatch(instances, bars, dataRevision, oldBars, change).results
+
+    private fun calculateIndicatorBatch(
+        instances: List<KLineIndicatorInstance>,
+        bars: List<KLineBar>,
+        dataRevision: Long,
+        oldBars: List<KLineBar>? = null,
+        change: KLineDataChange? = null,
+    ): IndicatorBatch {
         val activeInstances = instances.filter(KLineIndicatorInstance::visible)
         indicatorEngine.retainActive(activeInstances, dataRevision)
+        val results = mutableMapOf<String, KLineIndicatorResult>()
+        var changed = false
         activeInstances.forEach { instance ->
-            when (val outcome = indicatorEngine.calculateIsolated(instance, bars, dataRevision)) {
-                is KLineIndicatorCalculation.Success -> put(instance.id, outcome.result)
-                is KLineIndicatorCalculation.Failure -> if (outcome.shouldReport) {
-                    reportError(KLineError(
-                        code = KLineErrorCode.INDICATOR_CALCULATION_FAILED,
-                        message = outcome.cause.message ?: "Indicator calculation failed",
-                        instanceId = instance.id,
-                        templateName = instance.templateName,
-                    ))
+            val context = change?.let { dataChange -> snapshot.indicatorResults[instance.id]?.let { previous ->
+                val tracker = performanceTracker
+                val key = KLinePerformanceKey(instance.id, instance.templateName)
+                KLineIndicatorUpdateContext(
+                    if (tracker == null) oldBars.orEmpty() else TrackedKLineBars(oldBars.orEmpty(), tracker, key, old = true),
+                    if (tracker == null) bars else TrackedKLineBars(bars, tracker, key, old = false),
+                    previous,
+                    dataChange,
+                    tracker,
+                    key,
+                )
+            } }
+            when (val outcome = indicatorEngine.calculateIsolated(instance, bars, dataRevision, context)) {
+                is KLineIndicatorCalculation.Success -> {
+                    results[instance.id] = outcome.result
+                    changed = changed || outcome.changed
+                }
+                is KLineIndicatorCalculation.Failure -> {
+                    changed = changed || snapshot.indicatorResults.containsKey(instance.id)
+                    if (outcome.shouldReport) {
+                        reportError(KLineError(
+                            code = KLineErrorCode.INDICATOR_CALCULATION_FAILED,
+                            message = outcome.cause.message ?: "Indicator calculation failed",
+                            instanceId = instance.id,
+                            templateName = instance.templateName,
+                        ))
+                    }
                 }
             }
         }
+        changed = changed || snapshot.indicatorResults.keys != results.keys
+        return IndicatorBatch(results.toMap(), changed)
     }
 
     private fun reportError(error: KLineError) {
@@ -561,9 +718,12 @@ class KLineStore(
         }
     }
 
-    private fun publish(next: KLineStoreSnapshot) {
+    private fun publish(next: KLineStoreSnapshot, force: Boolean = false) {
         val previous = snapshot
-        if (previous == next) return
+        if (!force) {
+            performanceTracker?.recordPublishComparisonStep()
+            if (sameSnapshotState(previous, next)) return
+        }
         snapshot = next
         observers.toList().forEach { observer ->
             try {
@@ -573,6 +733,46 @@ class KLineStore(
             }
         }
     }
+
+    private fun barsEqual(first: List<KLineBar>, second: List<KLineBar>): Boolean {
+        if (first === second) return true
+        if (first.size != second.size) return false
+        val left = first.iterator()
+        val right = second.iterator()
+        while (left.hasNext()) {
+            performanceTracker?.recordBarOldItemRead()
+            if (left.next() != right.next()) return false
+        }
+        return true
+    }
+
+    private fun sameSnapshotState(first: KLineStoreSnapshot, second: KLineStoreSnapshot): Boolean =
+        first === second ||
+            first.symbol == second.symbol &&
+            first.period == second.period &&
+            first.bars === second.bars &&
+            first.hasMoreBefore == second.hasMoreBefore &&
+            first.hasMoreAfter == second.hasMoreAfter &&
+            first.loadState == second.loadState &&
+            first.viewport == second.viewport &&
+            first.panes === second.panes &&
+            first.indicatorInstances === second.indicatorInstances &&
+            first.indicatorResults === second.indicatorResults &&
+            first.overlayInstances === second.overlayInstances &&
+            first.selectedOverlayId == second.selectedOverlayId &&
+            first.interactionState == second.interactionState &&
+            first.interactionSession == second.interactionSession &&
+            first.crosshair == second.crosshair &&
+            first.clickSelection == second.clickSelection &&
+            first.dataRevision == second.dataRevision &&
+            first.viewportRevision == second.viewportRevision &&
+            first.paneRevision == second.paneRevision &&
+            first.indicatorRevision == second.indicatorRevision &&
+            first.overlayRevision == second.overlayRevision &&
+            first.interactionRevision == second.interactionRevision &&
+            first.theme == second.theme &&
+            first.styleRevision == second.styleRevision &&
+            first.formatters == second.formatters
 
     private fun normalizeOverlayOrder(instances: List<KLineOverlayInstance>): List<KLineOverlayInstance> =
         instances.sortedBy(KLineOverlayInstance::zIndex)
@@ -596,6 +796,26 @@ private fun KLineInteractionSession.immutableCopy(): KLineInteractionSession = w
         initialHeights = initialHeights.toList(),
     )
 }
+
+private data class IndicatorBatch(
+    val results: Map<String, KLineIndicatorResult>,
+    val changed: Boolean,
+)
+
+private data class MergeOutcome(
+    val bars: List<KLineBar>,
+    val change: KLineDataChange,
+    val changed: Boolean,
+    val insertedBefore: Int,
+)
+
+private fun fullChange(oldSize: Int, newSize: Int) = KLineDataChange(
+    KLineDataChangeKind.FULL_REPLACE,
+    0 until oldSize,
+    0 until newSize,
+    unchangedPrefixCount = 0,
+    unchangedSuffixCount = 0,
+)
 
 internal fun interface KLineStoreSubscription {
     fun cancel()

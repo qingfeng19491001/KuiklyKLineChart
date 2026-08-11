@@ -2,7 +2,8 @@ package com.tencent.kuiklybase.kline.indicator
 
 import com.tencent.kuiklybase.kline.data.KLineBar
 
-object KLineMovingAverageIndicator : KLineIndicatorTemplate {
+object KLineMovingAverageIndicator : KLineIncrementalIndicatorTemplate {
+    override fun finiteLookback(params: List<Double>) = params.ifEmpty { defaultParams }.maxOf(::positivePeriod)
     override val name: String = "MA"
     override val defaultParams: List<Double> = listOf(5.0, 10.0, 20.0, 30.0)
     override val series: KLineIndicatorSeries = KLineIndicatorSeries.PRICE
@@ -12,6 +13,9 @@ object KLineMovingAverageIndicator : KLineIndicatorTemplate {
             title = "MA${period.toInt()}",
             type = KLineIndicatorFigureType.LINE,
         )
+    }
+    override fun figureSchema(params: List<Double>) = params.ifEmpty { defaultParams }.map(::positivePeriod).map { period ->
+        KLineIndicatorFigure("MA$period", "MA$period", KLineIndicatorFigureType.LINE)
     }
 
     override fun calculate(
@@ -34,24 +38,26 @@ object KLineMovingAverageIndicator : KLineIndicatorTemplate {
 }
 
 internal fun positivePeriod(value: Double): Int {
-    require(value.isFinite() && value > 0.0 && value == value.toInt().toDouble()) {
-        "Indicator period must be a positive integer"
+    require(value.isFinite() && value > 0.0 && value <= MAX_INDICATOR_PERIOD && value == value.toInt().toDouble()) {
+        "Indicator period must be a positive integer no greater than $MAX_INDICATOR_PERIOD"
     }
     return value.toInt()
 }
 
+private const val MAX_INDICATOR_PERIOD = 1_000
+
 internal fun movingAverage(values: List<Double>, period: Int): List<Double?> {
     require(period > 0) { "period must be positive" }
-    var sum = 0.0
-    var invalidCount = 0
     return values.indices.map { index ->
-        val added = values[index]
-        if (added.isFinite()) sum += added else invalidCount++
-        if (index >= period) {
-            val removed = values[index - period]
-            if (removed.isFinite()) sum -= removed else invalidCount--
+        if (index + 1 < period) null else {
+            var sum = 0.0
+            var valid = true
+            for (windowIndex in index - period + 1..index) {
+                val value = values[windowIndex]
+                if (!value.isFinite()) valid = false else sum += value
+            }
+            if (!valid) null else finiteOrNull(sum / period)
         }
-        if (index + 1 < period || invalidCount > 0) null else finiteOrNull(sum / period)
     }
 }
 

@@ -3,7 +3,8 @@ package com.tencent.kuiklybase.kline.indicator
 import com.tencent.kuiklybase.kline.data.KLineBar
 import kotlin.math.sqrt
 
-object KLineBollIndicator : KLineIndicatorTemplate {
+object KLineBollIndicator : KLineIncrementalIndicatorTemplate {
+    override fun finiteLookback(params: List<Double>) = positivePeriod(params.ifEmpty { defaultParams }.first())
     override val name = "BOLL"
     override val defaultParams = listOf(20.0, 2.0)
     override val series = KLineIndicatorSeries.PRICE
@@ -17,20 +18,17 @@ object KLineBollIndicator : KLineIndicatorTemplate {
         val period = positivePeriod(resolved[0])
         val multiplier = resolved[1].also { require(it.isFinite() && it >= 0.0) }
         val close = bars.map(KLineBar::close)
-        var sum = 0.0
-        var sumSquares = 0.0
         val middle = MutableList<Double?>(close.size) { null }
         val deviation = MutableList<Double?>(close.size) { null }
         close.indices.forEach { index ->
-            val added = close[index]
-            sum += added
-            sumSquares += added * added
-            if (index >= period) {
-                val removed = close[index - period]
-                sum -= removed
-                sumSquares -= removed * removed
-            }
             if (index + 1 >= period) {
+                var sum = 0.0
+                var sumSquares = 0.0
+                for (windowIndex in index - period + 1..index) {
+                    val value = close[windowIndex]
+                    sum += value
+                    sumSquares += value * value
+                }
                 val mean = sum / period
                 middle[index] = finiteOrNull(mean)
                 deviation[index] = finiteOrNull(sqrt((sumSquares / period - mean * mean).coerceAtLeast(0.0)))

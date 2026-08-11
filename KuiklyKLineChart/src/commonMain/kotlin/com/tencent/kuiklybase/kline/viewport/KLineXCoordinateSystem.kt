@@ -1,6 +1,8 @@
 package com.tencent.kuiklybase.kline.viewport
 
 import com.tencent.kuiklybase.kline.data.KLineBar
+import com.tencent.kuiklybase.kline.data.exactTimestampIndex
+import com.tencent.kuiklybase.kline.data.nearestTimestampIndex
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import kotlin.math.roundToInt
 
@@ -16,18 +18,10 @@ class KLineXCoordinateSystem(
         viewport.startIndex + (pixel - plot.left) / viewport.barSpace
 
     fun timestampToIndex(timestamp: Long): Int? {
-        if (bars.isEmpty()) return null
-        val result = bars.binarySearchBy(timestamp) { it.timestamp }
-        if (result >= 0) return result
-        val insertion = -result - 1
-        if (insertion == 0) return 0
-        if (insertion == bars.size) return bars.lastIndex
-        val before = bars[insertion - 1].timestamp
-        val after = bars[insertion].timestamp
-        val distanceBefore = timestamp.toDouble() - before.toDouble()
-        val distanceAfter = after.toDouble() - timestamp.toDouble()
-        return if (distanceBefore <= distanceAfter) insertion - 1 else insertion
+        return bars.nearestTimestampIndex(timestamp)
     }
+
+    fun exactTimestampToIndex(timestamp: Long): Int? = bars.exactTimestampIndex(timestamp)
 
     fun indexToTimestamp(index: Double): Long? {
         if (bars.isEmpty() || !index.isFinite()) return null

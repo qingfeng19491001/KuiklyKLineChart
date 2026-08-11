@@ -4,6 +4,7 @@ import com.tencent.kuiklybase.kline.data.KLineBar
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class KLineViewportTest {
     private val config = KLineViewportConfig(
@@ -30,6 +31,36 @@ class KLineViewportTest {
         assertEquals(220.0, coordinates.indexToPixel(99.0), 1e-9)
         assertEquals(120.0, coordinates.timestampToPixel(89_000L)!!, 1e-9)
         assertEquals(89_000L, coordinates.pixelToTimestamp(120.0))
+    }
+
+    @Test
+    fun timestampQueriesRemainExactAcrossLongExtremes() {
+        val bars = listOf(barAt(Long.MIN_VALUE), barAt(Long.MAX_VALUE - 2), barAt(Long.MAX_VALUE))
+        val coordinates = KLineXCoordinateSystem(plot, KLineViewport(0.0, 2.0, 10.0, rightOffset = 0.0), bars)
+
+        assertEquals(1, coordinates.timestampToIndex(Long.MAX_VALUE - 1))
+        assertEquals(2, coordinates.exactTimestampToIndex(Long.MAX_VALUE))
+        assertEquals(null, coordinates.exactTimestampToIndex(0))
+        val extremes = KLineXCoordinateSystem(
+            plot,
+            KLineViewport(0.0, 1.0, 10.0, rightOffset = 0.0),
+            listOf(barAt(Long.MIN_VALUE), barAt(Long.MAX_VALUE)),
+        )
+        assertEquals(1, extremes.timestampToIndex(0))
+    }
+
+    @Test
+    fun timestampQueriesUseLogarithmicElementAccessAtScale() {
+        listOf(1_000, 10_000, 100_000).forEach { size ->
+            val bars = CountingBars(List(size) { index -> barAt(index.toLong() * 2) })
+            val coordinates = KLineXCoordinateSystem(plot, KLineViewport(0.0, 2.0, 10.0, 0.0), bars)
+            bars.accessCount = 0
+            assertEquals(size - 1, coordinates.exactTimestampToIndex((size - 1L) * 2))
+            assertTrue(bars.accessCount <= 20, "size=$size accesses=${bars.accessCount}")
+            bars.accessCount = 0
+            assertEquals(size - 2, coordinates.timestampToIndex((size - 2L) * 2 + 1))
+            assertTrue(bars.accessCount <= 22, "nearest size=$size accesses=${bars.accessCount}")
+        }
     }
 
     @Test
@@ -74,4 +105,15 @@ class KLineViewportTest {
         low = 10.0,
         close = 10.0,
     )
+
+    private fun barAt(timestamp: Long): KLineBar = KLineBar(timestamp, 1.0, 1.0, 1.0, 1.0)
+
+    private class CountingBars(private val values: List<KLineBar>) : AbstractList<KLineBar>() {
+        var accessCount = 0
+        override val size: Int get() = values.size
+        override fun get(index: Int): KLineBar {
+            accessCount++
+            return values[index]
+        }
+    }
 }

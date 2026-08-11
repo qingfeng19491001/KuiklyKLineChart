@@ -157,6 +157,14 @@ class KLineIndicatorEngineTest {
         assertFailsWith<IllegalArgumentException> { KLineSymbol("symbol", volumePrecision = 13) }
     }
 
+    @Test
+    fun indicatorPeriodsRejectPathologicalFullWindowWork() {
+        assertFailsWith<IllegalArgumentException> {
+            KLineMovingAverageIndicator.calculate(listOf(bar(1, 1.0)), listOf(1_001.0))
+        }
+        assertEquals(null, KLineMovingAverageIndicator.calculate(listOf(bar(1, 1.0)), listOf(1_000.0)).figures.single().values.single())
+    }
+
     private fun bar(
         timestamp: Long,
         close: Double,

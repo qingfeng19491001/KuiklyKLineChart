@@ -1,6 +1,7 @@
 package com.tencent.kuiklybase.kline.controller
 
 import com.tencent.kuiklybase.kline.data.KLineDataSession
+import com.tencent.kuiklybase.kline.data.exactTimestampIndex
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import com.tencent.kuiklybase.kline.interaction.KLineInteractionEngine
 import com.tencent.kuiklybase.kline.interaction.KLineInteractionSession
@@ -294,7 +295,7 @@ internal class KLineChartRuntime(
         }
         val previousFirst = previous.bars.firstOrNull()?.timestamp
         val insertedBefore = previousFirst?.let { timestamp ->
-            current.bars.indexOfFirst { it.timestamp == timestamp }.takeIf { it > 0 }
+            current.bars.exactTimestampIndex(timestamp)?.takeIf { it > 0 }
         } ?: 0
         val next = when {
             insertedBefore > 0 -> KLineViewportEngine.preserveAfterPrepend(viewport, insertedBefore)
