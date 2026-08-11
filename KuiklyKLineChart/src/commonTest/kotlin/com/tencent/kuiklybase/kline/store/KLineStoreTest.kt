@@ -3,6 +3,7 @@ package com.tencent.kuiklybase.kline.store
 import com.tencent.kuiklybase.kline.data.KLineBar
 import com.tencent.kuiklybase.kline.error.KLineError
 import com.tencent.kuiklybase.kline.error.KLineErrorCode
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -84,6 +85,33 @@ class KLineStoreTest {
         assertEquals(false, store.snapshot.hasMoreBefore)
         assertEquals(false, store.snapshot.hasMoreAfter)
         assertEquals(40.0, store.snapshot.bars.first { it.timestamp == 4L }.close)
+    }
+
+    @Test
+    fun indicatorInstancesAndResultsStayInTheStoreAcrossDataAndConfigurationChanges() {
+        val store = KLineStore()
+        val ma = KLineIndicatorInstance(
+            id = "price-ma",
+            templateName = "MA",
+            paneId = "price",
+            params = listOf(3.0),
+            precision = 2,
+        )
+
+        store.setIndicator(ma)
+        store.replaceAll((1L..4L).map { bar(it, it.toDouble()) })
+
+        assertEquals(listOf("price-ma"), store.snapshot.indicatorInstances.map { it.id })
+        assertEquals(listOf(null, null, 2.0, 3.0), store.snapshot.indicatorResults.getValue("price-ma").figures.single().values)
+        assertEquals(2L, store.snapshot.indicatorRevision)
+
+        store.setIndicator(ma.copy(params = listOf(2.0)))
+        assertEquals(listOf(null, 1.5, 2.5, 3.5), store.snapshot.indicatorResults.getValue("price-ma").figures.single().values)
+        store.applyRealtime(bar(4, 5.0))
+        assertEquals(listOf(null, 1.5, 2.5, 4.0), store.snapshot.indicatorResults.getValue("price-ma").figures.single().values)
+        store.removeIndicator("price-ma")
+        assertEquals(emptyList(), store.snapshot.indicatorInstances)
+        assertEquals(emptyMap(), store.snapshot.indicatorResults)
     }
 
     private fun bar(timestamp: Long, close: Double): KLineBar = KLineBar(

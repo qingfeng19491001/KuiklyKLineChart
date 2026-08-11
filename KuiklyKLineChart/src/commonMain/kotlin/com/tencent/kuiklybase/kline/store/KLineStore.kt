@@ -7,6 +7,11 @@ import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.error.KLineError
 import com.tencent.kuiklybase.kline.error.KLineErrorCode
+import com.tencent.kuiklybase.kline.indicator.KLineBuiltInIndicators
+import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorEngine
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorResult
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.viewport.KLineViewport
 
@@ -19,9 +24,12 @@ data class KLineStoreSnapshot(
     val loadState: KLineLoadState = KLineLoadState(),
     val viewport: KLineViewport? = null,
     val panes: List<KLinePane> = emptyList(),
+    val indicatorInstances: List<KLineIndicatorInstance> = emptyList(),
+    val indicatorResults: Map<String, KLineIndicatorResult> = emptyMap(),
     val dataRevision: Long = 0,
     val viewportRevision: Long = 0,
     val paneRevision: Long = 0,
+    val indicatorRevision: Long = 0,
 )
 
 enum class KLineLoadPhase {
@@ -38,8 +46,10 @@ data class KLineLoadState(
 
 class KLineStore(
     private val onError: (KLineError) -> Unit = {},
+    val extensionRegistry: KLineExtensionRegistry = KLineBuiltInIndicators.registry(),
 ) {
     private val observers = mutableListOf<(KLineStoreSnapshot, KLineStoreSnapshot) -> Unit>()
+    private val indicatorEngine = KLineIndicatorEngine(extensionRegistry)
 
     var snapshot: KLineStoreSnapshot = KLineStoreSnapshot()
         private set
@@ -55,13 +65,16 @@ class KLineStore(
         symbol: KLineSymbol,
         period: KLinePeriod,
     ) {
-        publish(KLineStoreSnapshot(
+        publishData(snapshot.copy(
             symbol = symbol,
             period = period,
-            panes = snapshot.panes,
+            bars = emptyList(),
+            hasMoreBefore = false,
+            hasMoreAfter = false,
+            loadState = KLineLoadState(),
+            viewport = null,
             dataRevision = snapshot.dataRevision + 1,
             viewportRevision = snapshot.viewportRevision + 1,
-            paneRevision = snapshot.paneRevision,
         ))
     }
 
@@ -111,7 +124,7 @@ class KLineStore(
         hasMoreAfter: Boolean = false,
     ) {
         val normalized = normalize(bars)
-        publish(snapshot.copy(
+        publishData(snapshot.copy(
             bars = normalized,
             hasMoreBefore = hasMoreBefore,
             hasMoreAfter = hasMoreAfter,
@@ -130,7 +143,7 @@ class KLineStore(
             bar.timestamp !in existingTimestamps &&
                 (previousFirstTimestamp == null || bar.timestamp < previousFirstTimestamp)
         }
-        publish(snapshot.copy(
+        publishData(snapshot.copy(
             bars = merge(normalized, snapshot.bars),
             hasMoreBefore = hasMoreBefore,
             dataRevision = snapshot.dataRevision + 1,
@@ -142,7 +155,7 @@ class KLineStore(
         bars: List<KLineBar>,
         hasMoreAfter: Boolean,
     ) {
-        publish(snapshot.copy(
+        publishData(snapshot.copy(
             bars = merge(snapshot.bars, normalize(bars)),
             hasMoreAfter = hasMoreAfter,
             dataRevision = snapshot.dataRevision + 1,
@@ -158,7 +171,7 @@ class KLineStore(
             bar.timestamp > tail.timestamp -> snapshot.bars + bar
             else -> return
         }
-        publish(snapshot.copy(
+        publishData(snapshot.copy(
             bars = updatedBars,
             dataRevision = snapshot.dataRevision + 1,
         ))
@@ -178,6 +191,33 @@ class KLineStore(
         publish(snapshot.copy(
             panes = panes.toList(),
             paneRevision = snapshot.paneRevision + 1,
+        ))
+    }
+
+    internal fun setIndicator(instance: KLineIndicatorInstance) {
+        val instances = snapshot.indicatorInstances.toMutableList()
+        val index = instances.indexOfFirst { it.id == instance.id }
+        if (index >= 0) {
+            if (instances[index] == instance) return
+            instances[index] = instance
+        } else {
+            instances += instance
+        }
+        val results = calculateIndicators(instances, snapshot.bars, snapshot.dataRevision)
+        publish(snapshot.copy(
+            indicatorInstances = instances,
+            indicatorResults = results,
+            indicatorRevision = snapshot.indicatorRevision + 1,
+        ))
+    }
+
+    internal fun removeIndicator(instanceId: String) {
+        if (snapshot.indicatorInstances.none { it.id == instanceId }) return
+        val instances = snapshot.indicatorInstances.filterNot { it.id == instanceId }
+        publish(snapshot.copy(
+            indicatorInstances = instances,
+            indicatorResults = calculateIndicators(instances, snapshot.bars, snapshot.dataRevision),
+            indicatorRevision = snapshot.indicatorRevision + 1,
         ))
     }
 
@@ -206,6 +246,29 @@ class KLineStore(
         .associateBy(KLineBar::timestamp)
         .values
         .sortedBy(KLineBar::timestamp)
+
+    private fun publishData(next: KLineStoreSnapshot) {
+        val results = calculateIndicators(next.indicatorInstances, next.bars, next.dataRevision)
+        publish(next.copy(
+            indicatorResults = results,
+            indicatorRevision = if (next.indicatorInstances.isEmpty() && snapshot.indicatorInstances.isEmpty()) {
+                snapshot.indicatorRevision
+            } else {
+                snapshot.indicatorRevision + 1
+            },
+        ))
+    }
+
+    private fun calculateIndicators(
+        instances: List<KLineIndicatorInstance>,
+        bars: List<KLineBar>,
+        dataRevision: Long,
+    ): Map<String, KLineIndicatorResult> = instances
+        .asSequence()
+        .filter(KLineIndicatorInstance::visible)
+        .associate { instance ->
+            instance.id to indicatorEngine.calculate(instance, bars, dataRevision)
+        }
 
     private fun publish(next: KLineStoreSnapshot) {
         val previous = snapshot

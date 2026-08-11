@@ -8,6 +8,7 @@ import com.tencent.kuiklybase.kline.data.KLinePeriodUnit
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.data.StaticKLineDataSource
 import com.tencent.kuiklybase.kline.layout.KLineRect
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneKind
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
@@ -99,6 +100,30 @@ class KLineChartControllerTest {
             store.snapshot.bars,
         ).timestampToPixel(50_000L)
         assertEquals(beforePrependPixel!!, afterPrependPixel!!, 1e-9)
+    }
+
+    @Test
+    fun queuedIndicatorCommandsAddUpdateAndRemoveInstancesThroughTheStore() {
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource((1L..4L).map(::bar)), store))
+        val controller = KLineChartController()
+        val indicator = KLineIndicatorInstance(
+            id = "price-ma",
+            templateName = "MA",
+            paneId = "price",
+            params = listOf(3.0),
+            precision = 2,
+        )
+
+        controller.addIndicator(indicator)
+        controller.setMarket(KLineSymbol("000001.SZ"), KLinePeriod(1, KLinePeriodUnit.DAY))
+        controller.attach(runtime)
+        assertEquals(listOf(null, null, 10.0, 10.0), store.snapshot.indicatorResults.getValue("price-ma").figures.single().values)
+
+        controller.updateIndicator(indicator.copy(params = listOf(2.0), visible = false))
+        assertEquals(emptyMap(), store.snapshot.indicatorResults)
+        controller.removeIndicator("price-ma")
+        assertEquals(emptyList(), store.snapshot.indicatorInstances)
     }
 
     private fun pane(

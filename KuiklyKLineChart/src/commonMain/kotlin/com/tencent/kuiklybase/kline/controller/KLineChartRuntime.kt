@@ -72,6 +72,9 @@ internal class KLineChartRuntime(
             is KLineControllerCommand.RemovePane -> removePane(command.paneId)
             is KLineControllerCommand.MovePane -> movePane(command.paneId, command.index)
             is KLineControllerCommand.SetPaneState -> setPaneState(command.paneId, command.state)
+            is KLineControllerCommand.AddIndicator -> store.setIndicator(command.instance)
+            is KLineControllerCommand.UpdateIndicator -> store.setIndicator(command.instance)
+            is KLineControllerCommand.RemoveIndicator -> store.removeIndicator(command.instanceId)
         }
     }
 

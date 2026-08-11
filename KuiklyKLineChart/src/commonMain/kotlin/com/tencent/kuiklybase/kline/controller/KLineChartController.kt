@@ -2,6 +2,7 @@ package com.tencent.kuiklybase.kline.controller
 
 import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLineSymbol
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
 
@@ -44,6 +45,15 @@ class KLineChartController {
         state: KLinePaneState,
     ) = dispatch(KLineControllerCommand.SetPaneState(paneId, state))
 
+    fun addIndicator(instance: KLineIndicatorInstance) =
+        dispatch(KLineControllerCommand.AddIndicator(instance))
+
+    fun updateIndicator(instance: KLineIndicatorInstance) =
+        dispatch(KLineControllerCommand.UpdateIndicator(instance))
+
+    fun removeIndicator(instanceId: String) =
+        dispatch(KLineControllerCommand.RemoveIndicator(instanceId))
+
     internal fun attach(target: KLineChartControllerTarget) {
         this.target = target
         while (pendingCommands.isNotEmpty()) {
@@ -81,5 +91,7 @@ internal sealed interface KLineControllerCommand {
     data class RemovePane(val paneId: String) : KLineControllerCommand
     data class MovePane(val paneId: String, val index: Int) : KLineControllerCommand
     data class SetPaneState(val paneId: String, val state: KLinePaneState) : KLineControllerCommand
+    data class AddIndicator(val instance: KLineIndicatorInstance) : KLineControllerCommand
+    data class UpdateIndicator(val instance: KLineIndicatorInstance) : KLineControllerCommand
+    data class RemoveIndicator(val instanceId: String) : KLineControllerCommand
 }
-
