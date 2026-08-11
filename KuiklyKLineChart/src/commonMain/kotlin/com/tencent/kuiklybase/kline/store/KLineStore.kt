@@ -7,6 +7,8 @@ import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.error.KLineError
 import com.tencent.kuiklybase.kline.error.KLineErrorCode
+import com.tencent.kuiklybase.kline.pane.KLinePane
+import com.tencent.kuiklybase.kline.viewport.KLineViewport
 
 data class KLineStoreSnapshot(
     val symbol: KLineSymbol? = null,
@@ -15,7 +17,11 @@ data class KLineStoreSnapshot(
     val hasMoreBefore: Boolean = false,
     val hasMoreAfter: Boolean = false,
     val loadState: KLineLoadState = KLineLoadState(),
+    val viewport: KLineViewport? = null,
+    val panes: List<KLinePane> = emptyList(),
     val dataRevision: Long = 0,
+    val viewportRevision: Long = 0,
+    val paneRevision: Long = 0,
 )
 
 enum class KLineLoadPhase {
@@ -33,18 +39,30 @@ data class KLineLoadState(
 class KLineStore(
     private val onError: (KLineError) -> Unit = {},
 ) {
+    private val observers = mutableListOf<(KLineStoreSnapshot, KLineStoreSnapshot) -> Unit>()
+
     var snapshot: KLineStoreSnapshot = KLineStoreSnapshot()
         private set
+
+    internal fun observe(
+        observer: (previous: KLineStoreSnapshot, current: KLineStoreSnapshot) -> Unit,
+    ): KLineStoreSubscription {
+        observers += observer
+        return KLineStoreSubscription { observers.remove(observer) }
+    }
 
     internal fun reset(
         symbol: KLineSymbol,
         period: KLinePeriod,
     ) {
-        snapshot = KLineStoreSnapshot(
+        publish(KLineStoreSnapshot(
             symbol = symbol,
             period = period,
+            panes = snapshot.panes,
             dataRevision = snapshot.dataRevision + 1,
-        )
+            viewportRevision = snapshot.viewportRevision + 1,
+            paneRevision = snapshot.paneRevision,
+        ))
     }
 
     internal fun setLoadPhase(
@@ -52,13 +70,13 @@ class KLineStore(
         phase: KLineLoadPhase,
     ) {
         val state = snapshot.loadState
-        snapshot = snapshot.copy(
+        publish(snapshot.copy(
             loadState = when (direction) {
                 KLineLoadDirection.INITIAL -> state.copy(initial = phase)
                 KLineLoadDirection.BEFORE -> state.copy(before = phase)
                 KLineLoadDirection.AFTER -> state.copy(after = phase)
             },
-        )
+        ))
     }
 
     internal fun onLoadFailure(
@@ -93,12 +111,12 @@ class KLineStore(
         hasMoreAfter: Boolean = false,
     ) {
         val normalized = normalize(bars)
-        snapshot = snapshot.copy(
+        publish(snapshot.copy(
             bars = normalized,
             hasMoreBefore = hasMoreBefore,
             hasMoreAfter = hasMoreAfter,
             dataRevision = snapshot.dataRevision + 1,
-        )
+        ))
     }
 
     fun prepend(
@@ -112,11 +130,11 @@ class KLineStore(
             bar.timestamp !in existingTimestamps &&
                 (previousFirstTimestamp == null || bar.timestamp < previousFirstTimestamp)
         }
-        snapshot = snapshot.copy(
+        publish(snapshot.copy(
             bars = merge(normalized, snapshot.bars),
             hasMoreBefore = hasMoreBefore,
             dataRevision = snapshot.dataRevision + 1,
-        )
+        ))
         return insertedBefore
     }
 
@@ -124,11 +142,11 @@ class KLineStore(
         bars: List<KLineBar>,
         hasMoreAfter: Boolean,
     ) {
-        snapshot = snapshot.copy(
+        publish(snapshot.copy(
             bars = merge(snapshot.bars, normalize(bars)),
             hasMoreAfter = hasMoreAfter,
             dataRevision = snapshot.dataRevision + 1,
-        )
+        ))
     }
 
     fun applyRealtime(bar: KLineBar) {
@@ -140,10 +158,27 @@ class KLineStore(
             bar.timestamp > tail.timestamp -> snapshot.bars + bar
             else -> return
         }
-        snapshot = snapshot.copy(
+        publish(snapshot.copy(
             bars = updatedBars,
             dataRevision = snapshot.dataRevision + 1,
-        )
+        ))
+    }
+
+    internal fun setViewport(viewport: KLineViewport?) {
+        if (snapshot.viewport == viewport) return
+        publish(snapshot.copy(
+            viewport = viewport,
+            viewportRevision = snapshot.viewportRevision + 1,
+        ))
+    }
+
+    internal fun setPanes(panes: List<KLinePane>) {
+        require(panes.map(KLinePane::id).distinct().size == panes.size) { "Pane ids must be unique" }
+        if (snapshot.panes == panes) return
+        publish(snapshot.copy(
+            panes = panes.toList(),
+            paneRevision = snapshot.paneRevision + 1,
+        ))
     }
 
     private fun accept(bar: KLineBar): Boolean {
@@ -171,4 +206,15 @@ class KLineStore(
         .associateBy(KLineBar::timestamp)
         .values
         .sortedBy(KLineBar::timestamp)
+
+    private fun publish(next: KLineStoreSnapshot) {
+        val previous = snapshot
+        if (previous == next) return
+        snapshot = next
+        observers.toList().forEach { it(previous, next) }
+    }
+}
+
+internal fun interface KLineStoreSubscription {
+    fun cancel()
 }
