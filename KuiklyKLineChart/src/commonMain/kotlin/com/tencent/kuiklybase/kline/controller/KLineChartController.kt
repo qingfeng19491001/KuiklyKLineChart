@@ -5,6 +5,7 @@ import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayConfig
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
 import kotlin.concurrent.atomics.AtomicLong
@@ -61,10 +62,31 @@ class KLineChartController {
         dispatch(KLineControllerCommand.RemoveIndicator(instanceId))
 
     fun createOverlay(config: KLineOverlayConfig): String {
-        check(nextOverlaySequence > 0) { "Overlay id sequence exhausted" }
-        val id = "overlay-$overlayIdPrefix-${nextOverlaySequence++}"
+        val id = allocateOverlayId()
         dispatch(KLineControllerCommand.CreateOverlay(config.toInstance(id)))
         return id
+    }
+
+    fun beginOverlay(
+        name: String,
+        paneId: String = "price",
+        magnetMode: KLineOverlayMagnetMode = KLineOverlayMagnetMode.NONE,
+    ): String {
+        require(name.isNotBlank()) { "Overlay template name must not be blank" }
+        val id = allocateOverlayId()
+        dispatch(KLineControllerCommand.BeginOverlay(id, name, paneId, magnetMode))
+        return id
+    }
+
+    fun cancelInteraction() = dispatch(KLineControllerCommand.CancelInteraction)
+
+    fun clearCrosshair() = dispatch(KLineControllerCommand.ClearCrosshair)
+
+    fun deleteSelectedOverlay() = dispatch(KLineControllerCommand.DeleteSelectedOverlay)
+
+    private fun allocateOverlayId(): String {
+        check(nextOverlaySequence > 0) { "Overlay id sequence exhausted" }
+        return "overlay-$overlayIdPrefix-${nextOverlaySequence++}"
     }
 
     fun updateOverlay(
@@ -137,4 +159,13 @@ internal sealed interface KLineControllerCommand {
     data class CreateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
     data class UpdateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
     data class RemoveOverlay(val instanceId: String) : KLineControllerCommand
+    data class BeginOverlay(
+        val draftId: String,
+        val templateName: String,
+        val paneId: String,
+        val magnetMode: KLineOverlayMagnetMode,
+    ) : KLineControllerCommand
+    data object CancelInteraction : KLineControllerCommand
+    data object ClearCrosshair : KLineControllerCommand
+    data object DeleteSelectedOverlay : KLineControllerCommand
 }

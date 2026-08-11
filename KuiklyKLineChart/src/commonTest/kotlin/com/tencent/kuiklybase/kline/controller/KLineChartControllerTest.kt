@@ -13,6 +13,12 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayConfig
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayFigureStyle
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayPoint
+import com.tencent.kuiklybase.kline.interaction.KLineInteractionState
+import com.tencent.kuiklybase.kline.interaction.KLineInteractionSession
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayContext
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayDrawingMode
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayFigure
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayTemplate
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneKind
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
@@ -24,6 +30,88 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class KLineChartControllerTest {
+    @Test
+    fun runtimeBoundariesCancelAndRollbackActiveInteractionsBeforeClearingTransientState() {
+        val bars = (1L..40L).map(::bar)
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(bars), store))
+        runtime.updatePlotRect(KLineRect(0.0, 0.0, 200.0, 400.0))
+        val controller = KLineChartController()
+        controller.attach(runtime)
+        val overlay = KLineOverlayConfig(
+            "segment",
+            paneId = "price",
+            points = listOf(KLineOverlayPoint(1_000L, 10.0), KLineOverlayPoint(2_000L, 20.0)),
+        ).toInstance("kept")
+        store.addOverlay(overlay)
+        store.beginInteraction(KLineInteractionSession.DraggingOverlayPoint("kept", 0, overlay.points))
+        store.updateOverlay(overlay.copy(points = listOf(KLineOverlayPoint(1_000L, 99.0), overlay.points[1])))
+
+        controller.setMarket(KLineSymbol("000002.SZ"), KLinePeriod(1, KLinePeriodUnit.DAY))
+        assertEquals(overlay.points, store.snapshot.overlayInstances.single().points)
+        assertEquals(KLineInteractionState.IDLE, store.snapshot.interactionState)
+        assertEquals(null, store.snapshot.selectedOverlayId)
+
+        store.beginInteraction(KLineInteractionSession.DraggingOverlay("kept", overlay.points[0], overlay.points))
+        store.updateOverlay(overlay.copy(points = listOf(KLineOverlayPoint(2_000L, 30.0), KLineOverlayPoint(3_000L, 40.0))))
+        controller.resetViewport()
+        assertEquals(overlay.points, store.snapshot.overlayInstances.single().points)
+        assertEquals(KLineInteractionState.IDLE, store.snapshot.interactionState)
+
+        val panes = listOf(pane("price", KLinePaneKind.PRICE, 0), pane("volume", KLinePaneKind.INDICATOR, 1))
+        store.setPanes(panes)
+        val layouts = com.tencent.kuiklybase.kline.pane.KLinePaneLayoutEngine.layout(panes, KLineRect(0.0, 0.0, 200.0, 400.0), 0.0)
+        runtime.interactionEngine.paneResize.beginResize(0, layouts[0].rect.bottom, layouts)
+        runtime.interactionEngine.paneResize.updateResize(layouts[0].rect.bottom + 30.0)
+        runtime.dispose()
+        assertEquals(panes, store.snapshot.panes)
+        assertEquals(KLineInteractionState.IDLE, store.snapshot.interactionState)
+    }
+
+    @Test
+    fun controllerBeginsOverlayRegisteredInTheStoresExtensionRegistry() {
+        val store = KLineStore()
+        store.extensionRegistry.registerOverlay(object : KLineOverlayTemplate {
+            override val name = "custom-marker"
+            override val requiredPointCount = 1
+            override val drawingMode = KLineOverlayDrawingMode.POINT_BY_POINT
+            override fun createFigures(context: KLineOverlayContext): List<KLineOverlayFigure> = emptyList()
+        })
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+
+        val draftId = controller.beginOverlay("custom-marker")
+        controller.attach(runtime)
+
+        assertEquals(KLineInteractionState.DRAWING_OVERLAY, store.snapshot.interactionState)
+        assertEquals(draftId, (store.snapshot.interactionSession as KLineInteractionSession.DrawingOverlay).draftId)
+    }
+
+    @Test
+    fun queuedInteractionCommandsEnterDrawingAndDeleteTheSelectedOverlayThroughRuntime() {
+        val bars = (1L..3L).map(::bar)
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(bars), store))
+        val controller = KLineChartController()
+
+        val draftId = controller.beginOverlay("segment")
+        assertTrue(draftId.startsWith("overlay-"))
+        assertEquals(KLineInteractionState.IDLE, store.snapshot.interactionState)
+        controller.attach(runtime)
+        assertEquals(KLineInteractionState.DRAWING_OVERLAY, store.snapshot.interactionState)
+        assertEquals(draftId, (store.snapshot.interactionSession as com.tencent.kuiklybase.kline.interaction.KLineInteractionSession.DrawingOverlay).draftId)
+
+        controller.cancelInteraction()
+        assertEquals(KLineInteractionState.IDLE, store.snapshot.interactionState)
+        val completedId = controller.createOverlay(
+            KLineOverlayConfig("horizontal_line", paneId = "price", points = listOf(KLineOverlayPoint(1_000L, 10.0))),
+        )
+        store.selectOverlay(completedId)
+        controller.deleteSelectedOverlay()
+        assertEquals(emptyList(), store.snapshot.overlayInstances)
+        assertEquals(null, store.snapshot.selectedOverlayId)
+    }
+
     @Test
     fun queuedAndAttachedCommandsDriveViewportAndPanesThroughOneStore() {
         val bars = (0L until 100L).map(::bar)

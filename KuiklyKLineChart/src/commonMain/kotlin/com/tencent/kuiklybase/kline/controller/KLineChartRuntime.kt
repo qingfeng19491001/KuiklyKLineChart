@@ -2,6 +2,7 @@ package com.tencent.kuiklybase.kline.controller
 
 import com.tencent.kuiklybase.kline.data.KLineDataSession
 import com.tencent.kuiklybase.kline.layout.KLineRect
+import com.tencent.kuiklybase.kline.interaction.KLineInteractionEngine
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
 import com.tencent.kuiklybase.kline.store.KLineStore
@@ -16,6 +17,7 @@ internal class KLineChartRuntime(
     private val dataSession: KLineDataSession,
     private val viewportConfig: KLineViewportConfig = KLineViewportConfig(),
 ) : KLineChartControllerTarget {
+    internal val interactionEngine = KLineInteractionEngine(store, store.extensionRegistry, viewportConfig)
     private var plotRect: KLineRect? = null
     private val storeSubscription = store.observe(::onStoreChanged)
 
@@ -40,13 +42,18 @@ internal class KLineChartRuntime(
     }
 
     fun dispose() {
+        interactionEngine.cancelInteraction()
+        store.resetInteractionState()
         storeSubscription.cancel()
         dataSession.close()
     }
 
     override fun execute(command: KLineControllerCommand) {
         when (command) {
-            is KLineControllerCommand.SetMarket -> dataSession.setMarket(command.symbol, command.period)
+            is KLineControllerCommand.SetMarket -> {
+                interactionEngine.cancelInteraction()
+                dataSession.setMarket(command.symbol, command.period)
+            }
             KLineControllerCommand.ScrollToLatest -> updateViewport { viewport, rect ->
                 KLineViewportEngine.scrollToLatest(
                     viewport = viewport,
@@ -78,6 +85,12 @@ internal class KLineChartRuntime(
             is KLineControllerCommand.CreateOverlay -> store.addOverlay(command.instance)
             is KLineControllerCommand.UpdateOverlay -> store.updateOverlay(command.instance)
             is KLineControllerCommand.RemoveOverlay -> store.removeOverlay(command.instanceId)
+            is KLineControllerCommand.BeginOverlay -> interactionEngine.overlay.beginOverlay(
+                command.templateName, command.paneId, command.magnetMode, command.draftId,
+            )
+            KLineControllerCommand.CancelInteraction -> interactionEngine.cancelInteraction()
+            KLineControllerCommand.ClearCrosshair -> interactionEngine.clearCrosshair()
+            KLineControllerCommand.DeleteSelectedOverlay -> interactionEngine.overlay.deleteSelectedOverlay()
         }
     }
 
@@ -146,6 +159,8 @@ internal class KLineChartRuntime(
     }
 
     private fun resetViewport() {
+        interactionEngine.cancelInteraction()
+        store.resetInteractionState()
         val rect = plotRect ?: return
         store.setViewport(
             KLineViewportEngine.initial(
