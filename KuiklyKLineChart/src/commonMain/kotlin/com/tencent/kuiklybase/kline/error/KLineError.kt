@@ -13,5 +13,6 @@ data class KLineError(
     val code: KLineErrorCode,
     val message: String,
     val timestamp: Long? = null,
+    val instanceId: String? = null,
+    val templateName: String? = null,
 )
-

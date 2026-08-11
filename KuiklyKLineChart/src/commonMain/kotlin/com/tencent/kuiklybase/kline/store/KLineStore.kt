@@ -1,5 +1,8 @@
 package com.tencent.kuiklybase.kline.store
 
+import com.tencent.kuiklybase.kline.config.KLineTheme
+import com.tencent.kuiklybase.kline.controller.KLineChartState
+import com.tencent.kuiklybase.kline.controller.deepCopy
 import com.tencent.kuiklybase.kline.data.KLineBar
 import com.tencent.kuiklybase.kline.data.KLineBarValidator
 import com.tencent.kuiklybase.kline.data.KLineLoadDirection
@@ -7,9 +10,11 @@ import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.error.KLineError
 import com.tencent.kuiklybase.kline.error.KLineErrorCode
+import com.tencent.kuiklybase.kline.format.KLineFormatters
 import com.tencent.kuiklybase.kline.indicator.KLineBuiltInIndicators
 import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorEngine
+import com.tencent.kuiklybase.kline.indicator.KLineIndicatorCalculation
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorResult
 import com.tencent.kuiklybase.kline.interaction.KLineBarSelection
@@ -20,6 +25,7 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
 import com.tencent.kuiklybase.kline.overlay.KLineBuiltInOverlays
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.viewport.KLineViewport
+import kotlin.coroutines.cancellation.CancellationException
 
 data class KLineStoreSnapshot(
     val symbol: KLineSymbol? = null,
@@ -44,6 +50,9 @@ data class KLineStoreSnapshot(
     val indicatorRevision: Long = 0,
     val overlayRevision: Long = 0,
     val interactionRevision: Long = 0,
+    val theme: KLineTheme = KLineTheme.LIGHT,
+    val styleRevision: Long = 0,
+    val formatters: KLineFormatters = KLineFormatters.DEFAULT,
 )
 
 enum class KLineLoadPhase {
@@ -66,6 +75,7 @@ class KLineStore(
     ),
 ) {
     private val observers = mutableListOf<(KLineStoreSnapshot, KLineStoreSnapshot) -> Unit>()
+    private val errorObservers = mutableListOf<(KLineError) -> Unit>()
     private val indicatorEngine = KLineIndicatorEngine(extensionRegistry)
 
     var snapshot: KLineStoreSnapshot = KLineStoreSnapshot()
@@ -76,6 +86,11 @@ class KLineStore(
     ): KLineStoreSubscription {
         observers += observer
         return KLineStoreSubscription { observers.remove(observer) }
+    }
+
+    fun observeErrors(observer: (KLineError) -> Unit): KLineErrorSubscription {
+        errorObservers += observer
+        return KLineErrorSubscription { errorObservers.remove(observer) }
     }
 
     internal fun reset(
@@ -120,7 +135,7 @@ class KLineStore(
         message: String,
     ) {
         setLoadPhase(direction, KLineLoadPhase.FAILED)
-        onError(
+        reportError(
             KLineError(
                 code = if (direction == KLineLoadDirection.INITIAL) {
                     KLineErrorCode.INITIAL_LOAD_FAILED
@@ -133,7 +148,7 @@ class KLineStore(
     }
 
     internal fun onRealtimeFailure(message: String) {
-        onError(
+        reportError(
             KLineError(
                 code = KLineErrorCode.REALTIME_SUBSCRIPTION_FAILED,
                 message = message,
@@ -206,6 +221,72 @@ class KLineStore(
             viewport = viewport,
             viewportRevision = snapshot.viewportRevision + 1,
         ))
+    }
+
+    internal fun setTheme(theme: KLineTheme) {
+        if (snapshot.theme == theme) return
+        publish(snapshot.copy(theme = theme, styleRevision = snapshot.styleRevision + 1))
+    }
+
+    internal fun setFormatters(formatters: KLineFormatters) {
+        if (snapshot.formatters == formatters) return
+        publish(snapshot.copy(formatters = formatters, styleRevision = snapshot.styleRevision + 1))
+    }
+
+    internal fun validateRestoreState(state: KLineChartState) {
+        require(state.panes.map(KLinePane::id).distinct().size == state.panes.size) { "Pane ids must be unique" }
+        val knownIndicators = state.indicatorInstances.filter { extensionRegistry.find(it.templateName) != null }
+        val knownOverlays = state.overlayInstances.filter { extensionRegistry.findOverlay(it.templateName) != null }
+        require(knownIndicators.map(KLineIndicatorInstance::id).distinct().size == knownIndicators.size) { "Indicator instance ids must be unique" }
+        require(knownOverlays.map(KLineOverlayInstance::id).distinct().size == knownOverlays.size) { "Overlay instance ids must be unique" }
+        val paneIds = state.panes.mapTo(mutableSetOf(), KLinePane::id)
+        knownIndicators.forEach {
+            require(it.paneId in paneIds) { "Indicator ${it.id} references missing pane ${it.paneId}" }
+        }
+        knownOverlays.forEach {
+            require(it.paneId in paneIds) { "Overlay ${it.id} references missing pane ${it.paneId}" }
+            val required = extensionRegistry.findOverlay(it.templateName)!!.requiredPointCount
+            require(it.points.size >= required) { "Overlay ${it.id} requires at least $required points" }
+        }
+    }
+
+    internal fun restoreState(state: KLineChartState) {
+        validateRestoreState(state)
+        val panes = state.panes.map { it.copy(yAxes = it.yAxes.toList()) }
+        val indicators = state.indicatorInstances
+            .filter { extensionRegistry.find(it.templateName) != null }
+            .map { it.copy(params = it.params.toList()) }
+        val overlays = state.overlayInstances
+            .filter { extensionRegistry.findOverlay(it.templateName) != null }
+            .map { it.deepCopy() }
+            .sortedBy(KLineOverlayInstance::zIndex)
+        val current = snapshot
+        val indicatorResults = calculateIndicators(indicators, current.bars, current.dataRevision)
+        val next = current.copy(
+            viewport = state.viewport?.copy(),
+            panes = panes,
+            indicatorInstances = indicators,
+            indicatorResults = indicatorResults,
+            overlayInstances = overlays,
+            selectedOverlayId = null,
+            interactionState = KLineInteractionState.IDLE,
+            interactionSession = null,
+            crosshair = null,
+            clickSelection = null,
+            theme = state.theme,
+            formatters = state.formatters,
+            viewportRevision = current.viewportRevision + if (current.viewport != state.viewport) 1 else 0,
+            paneRevision = current.paneRevision + if (current.panes != panes) 1 else 0,
+            indicatorRevision = current.indicatorRevision + if (current.indicatorInstances != indicators || current.indicatorResults != indicatorResults) 1 else 0,
+            overlayRevision = current.overlayRevision + if (current.overlayInstances != overlays || current.selectedOverlayId != null) 1 else 0,
+            interactionRevision = current.interactionRevision + if (current.interactionState != KLineInteractionState.IDLE || current.interactionSession != null || current.crosshair != null || current.clickSelection != null) 1 else 0,
+            styleRevision = current.styleRevision + if (current.theme != state.theme || current.formatters != state.formatters) 1 else 0,
+        )
+        publish(next)
+    }
+
+    internal fun reportRestoreFailure(cause: Exception) {
+        reportError(KLineError(KLineErrorCode.STATE_RESTORE_FAILED, cause.message ?: "State restore failed"))
     }
 
     internal fun setPanes(panes: List<KLinePane>) {
@@ -361,6 +442,7 @@ class KLineStore(
             crosshair = null,
             clickSelection = null,
             selectedOverlayId = null,
+            overlayRevision = snapshot.overlayRevision + if (snapshot.selectedOverlayId != null) 1 else 0,
             interactionRevision = snapshot.interactionRevision + 1,
         ))
     }
@@ -397,7 +479,7 @@ class KLineStore(
 
     private fun accept(bar: KLineBar): Boolean {
         val reason = KLineBarValidator.invalidReason(bar) ?: return true
-        onError(
+        reportError(
             KLineError(
                 code = KLineErrorCode.INVALID_DATA,
                 message = reason,
@@ -431,18 +513,14 @@ class KLineStore(
         } else {
             next.interactionSession
         }
-        val results = calculateIndicators(next.indicatorInstances, next.bars, next.dataRevision)
+        val indicatorResults = calculateIndicators(next.indicatorInstances, next.bars, next.dataRevision)
         publish(next.copy(
             crosshair = reconciledCrosshair,
             interactionState = if (lostActiveCrosshair) KLineInteractionState.IDLE else next.interactionState,
             interactionSession = if (lostActiveCrosshair) null else reconciledSession,
             interactionRevision = if (crosshair != reconciledCrosshair) next.interactionRevision + 1 else next.interactionRevision,
-            indicatorResults = results,
-            indicatorRevision = if (next.indicatorInstances.isEmpty() && snapshot.indicatorInstances.isEmpty()) {
-                snapshot.indicatorRevision
-            } else {
-                snapshot.indicatorRevision + 1
-            },
+            indicatorResults = indicatorResults,
+            indicatorRevision = snapshot.indicatorRevision + if (snapshot.indicatorResults != indicatorResults) 1 else 0,
         ))
     }
 
@@ -450,18 +528,50 @@ class KLineStore(
         instances: List<KLineIndicatorInstance>,
         bars: List<KLineBar>,
         dataRevision: Long,
-    ): Map<String, KLineIndicatorResult> = instances
-        .asSequence()
-        .filter(KLineIndicatorInstance::visible)
-        .associate { instance ->
-            instance.id to indicatorEngine.calculate(instance, bars, dataRevision)
+    ): Map<String, KLineIndicatorResult> = buildMap {
+        val activeInstances = instances.filter(KLineIndicatorInstance::visible)
+        indicatorEngine.retainActive(activeInstances, dataRevision)
+        activeInstances.forEach { instance ->
+            when (val outcome = indicatorEngine.calculateIsolated(instance, bars, dataRevision)) {
+                is KLineIndicatorCalculation.Success -> put(instance.id, outcome.result)
+                is KLineIndicatorCalculation.Failure -> if (outcome.shouldReport) {
+                    reportError(KLineError(
+                        code = KLineErrorCode.INDICATOR_CALCULATION_FAILED,
+                        message = outcome.cause.message ?: "Indicator calculation failed",
+                        instanceId = instance.id,
+                        templateName = instance.templateName,
+                    ))
+                }
+            }
         }
+    }
+
+    private fun reportError(error: KLineError) {
+        try {
+            onError(error)
+        } catch (cause: Exception) {
+            if (cause is CancellationException) throw cause
+        }
+        errorObservers.toList().forEach { observer ->
+            try {
+                observer(error)
+            } catch (cause: Exception) {
+                if (cause is CancellationException) throw cause
+            }
+        }
+    }
 
     private fun publish(next: KLineStoreSnapshot) {
         val previous = snapshot
         if (previous == next) return
         snapshot = next
-        observers.toList().forEach { it(previous, next) }
+        observers.toList().forEach { observer ->
+            try {
+                observer(previous, next)
+            } catch (cause: Exception) {
+                if (cause is CancellationException) throw cause
+            }
+        }
     }
 
     private fun normalizeOverlayOrder(instances: List<KLineOverlayInstance>): List<KLineOverlayInstance> =
@@ -488,5 +598,9 @@ private fun KLineInteractionSession.immutableCopy(): KLineInteractionSession = w
 }
 
 internal fun interface KLineStoreSubscription {
+    fun cancel()
+}
+
+fun interface KLineErrorSubscription {
     fun cancel()
 }

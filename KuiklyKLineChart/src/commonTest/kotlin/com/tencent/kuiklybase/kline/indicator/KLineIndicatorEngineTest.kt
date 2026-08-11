@@ -6,6 +6,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
+import com.tencent.kuiklybase.kline.data.KLineSymbol
 
 class KLineIndicatorEngineTest {
     @Test
@@ -135,6 +137,24 @@ class KLineIndicatorEngineTest {
         registry.register(template)
         engine.calculate(first, bars, dataRevision = 2)
         assertEquals(3, template.calculationCount)
+
+        engine.calculate(first, bars, dataRevision = 3)
+        assertEquals(4, template.calculationCount)
+        engine.calculate(first, bars, dataRevision = 2)
+        assertEquals(5, template.calculationCount)
+    }
+
+    @Test
+    fun indicatorAndMarketPrecisionUseTheFormatterRange() {
+        val valid = KLineIndicatorInstance("valid", "MA", "price", emptyList(), 12)
+        assertEquals(12, valid.precision)
+        assertFailsWith<IllegalArgumentException> { valid.copy(precision = 13) }
+        assertFailsWith<IllegalArgumentException> {
+            KLineIndicatorInstance("invalid", "MA", "price", emptyList(), 13)
+        }
+        assertEquals(12, KLineSymbol("symbol", pricePrecision = 12, volumePrecision = 12).pricePrecision)
+        assertFailsWith<IllegalArgumentException> { KLineSymbol("symbol", pricePrecision = 13) }
+        assertFailsWith<IllegalArgumentException> { KLineSymbol("symbol", volumePrecision = 13) }
     }
 
     private fun bar(

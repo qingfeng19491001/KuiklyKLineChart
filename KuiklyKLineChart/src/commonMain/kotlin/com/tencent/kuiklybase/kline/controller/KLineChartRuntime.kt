@@ -3,6 +3,7 @@ package com.tencent.kuiklybase.kline.controller
 import com.tencent.kuiklybase.kline.data.KLineDataSession
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import com.tencent.kuiklybase.kline.interaction.KLineInteractionEngine
+import com.tencent.kuiklybase.kline.interaction.KLineInteractionSession
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
 import com.tencent.kuiklybase.kline.store.KLineStore
@@ -11,6 +12,7 @@ import com.tencent.kuiklybase.kline.viewport.KLineViewport
 import com.tencent.kuiklybase.kline.viewport.KLineViewportConfig
 import com.tencent.kuiklybase.kline.viewport.KLineViewportEngine
 import com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem
+import kotlin.coroutines.cancellation.CancellationException
 
 internal class KLineChartRuntime(
     private val store: KLineStore,
@@ -82,6 +84,9 @@ internal class KLineChartRuntime(
             is KLineControllerCommand.AddIndicator -> store.setIndicator(command.instance)
             is KLineControllerCommand.UpdateIndicator -> store.setIndicator(command.instance)
             is KLineControllerCommand.RemoveIndicator -> store.removeIndicator(command.instanceId)
+            is KLineControllerCommand.SetTheme -> store.setTheme(command.theme)
+            is KLineControllerCommand.SetFormatters -> store.setFormatters(command.formatters)
+            is KLineControllerCommand.RestoreState -> restoreState(command.state)
             is KLineControllerCommand.CreateOverlay -> store.addOverlay(command.instance)
             is KLineControllerCommand.UpdateOverlay -> store.updateOverlay(command.instance)
             is KLineControllerCommand.RemoveOverlay -> store.removeOverlay(command.instanceId)
@@ -91,6 +96,54 @@ internal class KLineChartRuntime(
             KLineControllerCommand.CancelInteraction -> interactionEngine.cancelInteraction()
             KLineControllerCommand.ClearCrosshair -> interactionEngine.clearCrosshair()
             KLineControllerCommand.DeleteSelectedOverlay -> interactionEngine.overlay.deleteSelectedOverlay()
+        }
+    }
+
+    override fun exportState(): KLineChartState {
+        val current = store.snapshot
+        val session = current.interactionSession
+        val durableViewport = when (session) {
+            is KLineInteractionSession.Panning -> session.initialViewport
+            is KLineInteractionSession.Scaling -> session.initialViewport
+            else -> current.viewport
+        }
+        val durablePanes = (session as? KLineInteractionSession.ResizingPane)?.initialPanes ?: current.panes
+        val draggedOverlayId: String?
+        val originalPoints = when (session) {
+            is KLineInteractionSession.DraggingOverlay -> {
+                draggedOverlayId = session.instanceId
+                session.originalPoints
+            }
+            is KLineInteractionSession.DraggingOverlayPoint -> {
+                draggedOverlayId = session.instanceId
+                session.originalPoints
+            }
+            else -> {
+                draggedOverlayId = null
+                null
+            }
+        }
+        val durableOverlays = if (draggedOverlayId == null || originalPoints == null) current.overlayInstances else {
+            current.overlayInstances.map { instance ->
+                if (instance.id == draggedOverlayId) instance.copy(points = originalPoints) else instance
+            }
+        }
+        return KLineChartState(
+            viewport = durableViewport?.copy(),
+            panes = durablePanes,
+            indicatorInstances = current.indicatorInstances,
+            overlayInstances = durableOverlays,
+            theme = current.theme,
+            formatters = current.formatters,
+        )
+    }
+
+    private fun restoreState(state: KLineChartState) {
+        try {
+            store.restoreState(state)
+        } catch (cause: Exception) {
+            if (cause is CancellationException) throw cause
+            store.reportRestoreFailure(cause)
         }
     }
 

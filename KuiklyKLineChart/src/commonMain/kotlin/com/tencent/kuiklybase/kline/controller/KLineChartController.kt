@@ -1,5 +1,7 @@
 package com.tencent.kuiklybase.kline.controller
 
+import com.tencent.kuiklybase.kline.config.KLineTheme
+import com.tencent.kuiklybase.kline.format.KLineFormatters
 import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
@@ -60,6 +62,16 @@ class KLineChartController {
 
     fun removeIndicator(instanceId: String) =
         dispatch(KLineControllerCommand.RemoveIndicator(instanceId))
+
+    fun setTheme(theme: KLineTheme) = dispatch(KLineControllerCommand.SetTheme(theme))
+
+    fun setFormatters(formatters: KLineFormatters) = dispatch(KLineControllerCommand.SetFormatters(formatters))
+
+    fun exportState(): KLineChartState = checkNotNull(target) {
+        "KLineChartController must be attached before exporting state"
+    }.exportState()
+
+    fun restoreState(state: KLineChartState) = dispatch(KLineControllerCommand.RestoreState(state.copy()))
 
     fun createOverlay(config: KLineOverlayConfig): String {
         val id = allocateOverlayId()
@@ -137,8 +149,9 @@ private object KLineOverlayControllerIdAllocator {
     }
 }
 
-internal fun interface KLineChartControllerTarget {
+internal interface KLineChartControllerTarget {
     fun execute(command: KLineControllerCommand)
+    fun exportState(): KLineChartState
 }
 
 internal sealed interface KLineControllerCommand {
@@ -156,6 +169,9 @@ internal sealed interface KLineControllerCommand {
     data class AddIndicator(val instance: KLineIndicatorInstance) : KLineControllerCommand
     data class UpdateIndicator(val instance: KLineIndicatorInstance) : KLineControllerCommand
     data class RemoveIndicator(val instanceId: String) : KLineControllerCommand
+    data class SetTheme(val theme: KLineTheme) : KLineControllerCommand
+    data class SetFormatters(val formatters: KLineFormatters) : KLineControllerCommand
+    data class RestoreState(val state: KLineChartState) : KLineControllerCommand
     data class CreateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
     data class UpdateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
     data class RemoveOverlay(val instanceId: String) : KLineControllerCommand

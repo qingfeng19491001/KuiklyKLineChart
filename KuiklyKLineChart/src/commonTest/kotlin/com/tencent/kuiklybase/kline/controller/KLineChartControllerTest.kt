@@ -24,6 +24,12 @@ import com.tencent.kuiklybase.kline.pane.KLinePaneKind
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
 import com.tencent.kuiklybase.kline.store.KLineStore
 import com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem
+import com.tencent.kuiklybase.kline.viewport.KLineViewport
+import com.tencent.kuiklybase.kline.config.KLineTheme
+import com.tencent.kuiklybase.kline.error.KLineError
+import com.tencent.kuiklybase.kline.error.KLineErrorCode
+import com.tencent.kuiklybase.kline.format.KLineFormatterOptions
+import kotlin.test.assertFailsWith
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -277,6 +283,180 @@ class KLineChartControllerTest {
         assertNotEquals(firstId, secondId)
         assertTrue(firstId.startsWith("overlay-") && secondId.startsWith("overlay-"))
         assertEquals(setOf(firstId, secondId), store.snapshot.overlayInstances.map { it.id }.toSet())
+    }
+
+    @Test
+    fun exportRequiresAttachmentAndRestoreQueuedBeforeAttachRestoresDurableState() {
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        assertFailsWith<IllegalStateException> { controller.exportState() }
+        val state = KLineChartState(
+            viewport = KLineViewport(2.0, 12.0, 8.0, -1.0),
+            panes = listOf(pane("price", KLinePaneKind.PRICE, 0)),
+            indicatorInstances = listOf(KLineIndicatorInstance("ma", "MA", "price", listOf(3.0), 2)),
+            overlayInstances = listOf(KLineOverlayConfig("horizontal_line", paneId = "price", points = listOf(KLineOverlayPoint(1, 10.0))).toInstance("line")),
+            theme = KLineTheme.DARK,
+        )
+
+        controller.restoreState(state)
+        controller.attach(runtime)
+        val exported = controller.exportState()
+
+        assertEquals(state, exported)
+        assertEquals(KLineTheme.DARK, store.snapshot.theme)
+        assertEquals(emptyList(), store.snapshot.bars)
+    }
+
+    @Test
+    fun restoreSkipsUnknownExtensionsDefensivelyAndDoesNotRestoreTransientInteraction() {
+        val errors = mutableListOf<KLineError>()
+        val store = KLineStore(errors::add)
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        controller.attach(runtime)
+        val points = mutableListOf(KLineOverlayPoint(1, 10.0))
+        val params = mutableListOf(3.0)
+        val state = KLineChartState(
+            viewport = null,
+            panes = listOf(pane("price", KLinePaneKind.PRICE, 0)),
+            indicatorInstances = listOf(
+                KLineIndicatorInstance("known", "MA", "price", params, 2),
+                KLineIndicatorInstance("unknown", "MISSING", "price", emptyList(), 2),
+            ),
+            overlayInstances = listOf(
+                KLineOverlayConfig("horizontal_line", paneId = "price", points = points).toInstance("known-overlay"),
+                KLineOverlayConfig("missing", paneId = "price", points = points).toInstance("unknown-overlay"),
+            ),
+            theme = KLineTheme.LIGHT,
+        )
+        params[0] = 99.0
+        points[0] = KLineOverlayPoint(2, 20.0)
+        store.beginInteraction(KLineInteractionSession.Panning(5.0, KLineViewport(0.0, 10.0, 8.0, 0.0)))
+
+        controller.restoreState(state)
+
+        assertEquals(listOf("known"), store.snapshot.indicatorInstances.map { it.id })
+        assertEquals(listOf(3.0), store.snapshot.indicatorInstances.single().params)
+        assertEquals(listOf("known-overlay"), store.snapshot.overlayInstances.map { it.id })
+        assertEquals(1L, store.snapshot.overlayInstances.single().points.single().timestamp)
+        assertEquals(KLineInteractionState.IDLE, store.snapshot.interactionState)
+        assertEquals(emptyList(), errors.filter { it.code == KLineErrorCode.STATE_RESTORE_FAILED })
+    }
+
+    @Test
+    fun structurallyInvalidRestoreFailsAtomicallyAndReportsOneError() {
+        val errors = mutableListOf<KLineError>()
+        val store = KLineStore(errors::add)
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        controller.attach(runtime)
+        controller.setPane(pane("price", KLinePaneKind.PRICE, 0))
+        store.beginInteraction(KLineInteractionSession.Panning(5.0, KLineViewport(0.0, 10.0, 8.0, 0.0)))
+        val before = store.snapshot
+        val duplicate = pane("dup", KLinePaneKind.PRICE, 0)
+
+        controller.restoreState(KLineChartState(null, listOf(duplicate, duplicate), emptyList(), emptyList(), KLineTheme.DARK))
+
+        assertEquals(before, store.snapshot)
+        assertEquals(KLineErrorCode.STATE_RESTORE_FAILED, errors.single().code)
+    }
+
+    @Test
+    fun successfulRestorePublishesOneAtomicSnapshotWhileCancellingInteraction() {
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        controller.attach(runtime)
+        store.beginInteraction(KLineInteractionSession.Panning(5.0, KLineViewport(0.0, 10.0, 8.0, 0.0)))
+        val observed = mutableListOf<com.tencent.kuiklybase.kline.store.KLineStoreSnapshot>()
+        val subscription = store.observe { _, current -> observed += current }
+        val target = KLineChartState(
+            KLineViewport(2.0, 12.0, 9.0, -2.0),
+            listOf(pane("price", KLinePaneKind.PRICE, 0)),
+            emptyList(),
+            emptyList(),
+            KLineTheme.DARK,
+        )
+
+        controller.restoreState(target)
+        subscription.cancel()
+
+        assertEquals(1, observed.size)
+        assertEquals(KLineInteractionState.IDLE, observed.single().interactionState)
+        assertEquals(target.viewport, observed.single().viewport)
+        assertEquals(target.theme, observed.single().theme)
+    }
+
+    @Test
+    fun exportRollsBackTransientInteractionMutationsInTheReturnedState() {
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        controller.attach(runtime)
+        val initial = KLineViewport(0.0, 10.0, 8.0, 0.0)
+        store.setViewport(initial)
+        store.beginInteraction(KLineInteractionSession.Panning(5.0, initial))
+        store.setViewport(KLineViewport(3.0, 13.0, 8.0, -3.0))
+
+        val state = controller.exportState()
+
+        assertEquals(initial, state.viewport)
+        assertEquals(KLineInteractionState.PANNING, store.snapshot.interactionState)
+        assertEquals(3.0, store.snapshot.viewport!!.startIndex)
+    }
+
+    @Test
+    fun resolvedFormattersAreStoreBackedStyleAndDurablePresentationState() {
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        controller.attach(runtime)
+        val options = KLineFormatterOptions().apply {
+            date = com.tencent.kuiklybase.kline.format.KLineFormatOptions(timeZone = com.tencent.kuiklybase.kline.format.KLineTimeZone.UTC)
+            price = com.tencent.kuiklybase.kline.format.KLineFormatOptions(pricePrecision = 0)
+            volume = com.tencent.kuiklybase.kline.format.KLineFormatOptions(volumePrecision = 1, language = com.tencent.kuiklybase.kline.format.KLineLanguage.CHINESE)
+            turnover = com.tencent.kuiklybase.kline.format.KLineFormatOptions(turnoverPrecision = 1)
+            percentage = com.tencent.kuiklybase.kline.format.KLineFormatOptions(percentagePrecision = 1, showPositiveSign = false)
+            indicatorValue = com.tencent.kuiklybase.kline.format.KLineFormatOptions(fallbackText = "N/A")
+        }
+        val resolved = options.resolved()
+        val initialRevision = store.snapshot.styleRevision
+
+        controller.setFormatters(KLineFormatterOptions().resolved())
+        assertEquals(initialRevision, store.snapshot.styleRevision)
+        controller.setFormatters(resolved)
+        options.price = com.tencent.kuiklybase.kline.format.KLineFormatOptions(pricePrecision = 4)
+
+        assertEquals("1970-01-01 00:00", store.snapshot.formatters.formatDate(1))
+        assertEquals("1", store.snapshot.formatters.formatPrice(1.0))
+        assertEquals("1.0", store.snapshot.formatters.formatVolume(1.0))
+        assertEquals("1.0", store.snapshot.formatters.formatTurnover(1.0))
+        assertEquals("100.0%", store.snapshot.formatters.formatPercentage(1.0))
+        assertEquals("N/A", store.snapshot.formatters.formatIndicatorValue(null, 2))
+        assertEquals(initialRevision + 1, store.snapshot.styleRevision)
+        controller.setFormatters(resolved)
+        assertEquals(initialRevision + 1, store.snapshot.styleRevision)
+
+        val exported = controller.exportState()
+        controller.setFormatters(KLineFormatterOptions().resolved())
+        controller.restoreState(exported)
+        assertEquals("1", store.snapshot.formatters.formatPrice(1.0))
+        assertEquals(resolved, controller.exportState().formatters)
+    }
+
+    @Test
+    fun fatalObserverErrorsPropagateAcrossRuntimeRestore() {
+        class Fatal : Error("fatal restore observer")
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        controller.attach(runtime)
+        store.observe { _, _ -> throw Fatal() }
+
+        assertFailsWith<Fatal> {
+            controller.restoreState(KLineChartState(null, emptyList(), emptyList(), emptyList(), KLineTheme.DARK))
+        }
     }
 
     private fun pane(

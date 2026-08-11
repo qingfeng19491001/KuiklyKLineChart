@@ -9,8 +9,8 @@ data class KLineSymbol(
 ) {
     init {
         require(ticker.isNotBlank()) { "Ticker must not be blank" }
-        require(pricePrecision >= 0) { "Price precision must be non-negative" }
-        require(volumePrecision >= 0) { "Volume precision must be non-negative" }
+        require(pricePrecision in 0..12) { "Price precision must be between 0 and 12" }
+        require(volumePrecision in 0..12) { "Volume precision must be between 0 and 12" }
         require(timezone.isNotBlank()) { "Timezone must not be blank" }
     }
 }
@@ -31,4 +31,3 @@ enum class KLinePeriodUnit {
     WEEK,
     MONTH,
 }
-
