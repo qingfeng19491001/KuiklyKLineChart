@@ -12,6 +12,7 @@ import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorEngine
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorResult
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.viewport.KLineViewport
 
@@ -26,10 +27,13 @@ data class KLineStoreSnapshot(
     val panes: List<KLinePane> = emptyList(),
     val indicatorInstances: List<KLineIndicatorInstance> = emptyList(),
     val indicatorResults: Map<String, KLineIndicatorResult> = emptyMap(),
+    val overlayInstances: List<KLineOverlayInstance> = emptyList(),
+    val selectedOverlayId: String? = null,
     val dataRevision: Long = 0,
     val viewportRevision: Long = 0,
     val paneRevision: Long = 0,
     val indicatorRevision: Long = 0,
+    val overlayRevision: Long = 0,
 )
 
 enum class KLineLoadPhase {
@@ -221,6 +225,62 @@ class KLineStore(
         ))
     }
 
+    internal fun addOverlay(instance: KLineOverlayInstance) {
+        require(snapshot.overlayInstances.none { it.id == instance.id }) {
+            "Overlay instance id already exists: ${instance.id}"
+        }
+        publish(snapshot.copy(
+            overlayInstances = normalizeOverlayOrder(snapshot.overlayInstances + instance.immutableCopy()),
+            overlayRevision = snapshot.overlayRevision + 1,
+        ))
+    }
+
+    internal fun updateOverlay(instance: KLineOverlayInstance) {
+        val index = snapshot.overlayInstances.indexOfFirst { it.id == instance.id }
+        require(index >= 0) { "Unknown overlay instance: ${instance.id}" }
+        val immutable = instance.immutableCopy()
+        if (snapshot.overlayInstances[index] == immutable) return
+        val instances = snapshot.overlayInstances.toMutableList()
+        instances[index] = immutable
+        publish(snapshot.copy(
+            overlayInstances = normalizeOverlayOrder(instances),
+            overlayRevision = snapshot.overlayRevision + 1,
+        ))
+    }
+
+    internal fun removeOverlay(instanceId: String) {
+        if (snapshot.overlayInstances.none { it.id == instanceId }) return
+        publish(snapshot.copy(
+            overlayInstances = snapshot.overlayInstances.filterNot { it.id == instanceId },
+            selectedOverlayId = snapshot.selectedOverlayId.takeUnless { it == instanceId },
+            overlayRevision = snapshot.overlayRevision + 1,
+        ))
+    }
+
+    internal fun selectOverlay(instanceId: String?) {
+        require(instanceId == null || snapshot.overlayInstances.any { it.id == instanceId }) {
+            "Unknown overlay instance: $instanceId"
+        }
+        if (snapshot.selectedOverlayId == instanceId) return
+        publish(snapshot.copy(
+            selectedOverlayId = instanceId,
+            overlayRevision = snapshot.overlayRevision + 1,
+        ))
+    }
+
+    internal fun removeOverlayGroup(groupId: String) {
+        require(groupId.isNotBlank()) { "Overlay group id must not be blank" }
+        val removedIds = snapshot.overlayInstances
+            .filter { it.groupId == groupId }
+            .mapTo(mutableSetOf(), KLineOverlayInstance::id)
+        if (removedIds.isEmpty()) return
+        publish(snapshot.copy(
+            overlayInstances = snapshot.overlayInstances.filterNot { it.id in removedIds },
+            selectedOverlayId = snapshot.selectedOverlayId.takeUnless { it in removedIds },
+            overlayRevision = snapshot.overlayRevision + 1,
+        ))
+    }
+
     private fun accept(bar: KLineBar): Boolean {
         val reason = KLineBarValidator.invalidReason(bar) ?: return true
         onError(
@@ -276,7 +336,16 @@ class KLineStore(
         snapshot = next
         observers.toList().forEach { it(previous, next) }
     }
+
+    private fun normalizeOverlayOrder(instances: List<KLineOverlayInstance>): List<KLineOverlayInstance> =
+        instances.sortedBy(KLineOverlayInstance::zIndex)
 }
+
+private fun KLineOverlayInstance.immutableCopy(): KLineOverlayInstance = copy(
+    points = points.toList(),
+    styles = styles.mapValues { (_, style) -> style.copy(lineDash = style.lineDash.toList()) },
+    extendData = extendData.toMap(),
+)
 
 internal fun interface KLineStoreSubscription {
     fun cancel()

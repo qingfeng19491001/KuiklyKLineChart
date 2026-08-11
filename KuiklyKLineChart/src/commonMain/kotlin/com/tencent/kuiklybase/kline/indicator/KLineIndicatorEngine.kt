@@ -17,7 +17,7 @@ class KLineIndicatorEngine(
         }
         val key = CacheKey(
             dataRevision = dataRevision,
-            registryRevision = registry.revision,
+            registryRevision = registry.indicatorRevision,
             templateName = instance.templateName,
             params = instance.params,
         )

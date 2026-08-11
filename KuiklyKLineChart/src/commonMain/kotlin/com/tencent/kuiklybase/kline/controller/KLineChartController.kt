@@ -3,12 +3,18 @@ package com.tencent.kuiklybase.kline.controller
 import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayConfig
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 class KLineChartController {
     private val pendingCommands = ArrayDeque<KLineControllerCommand>()
     private var target: KLineChartControllerTarget? = null
+    private val overlayIdPrefix: Long = KLineOverlayControllerIdAllocator.allocatePrefix()
+    private var nextOverlaySequence: Long = 1
 
     fun setMarket(
         symbol: KLineSymbol,
@@ -54,6 +60,26 @@ class KLineChartController {
     fun removeIndicator(instanceId: String) =
         dispatch(KLineControllerCommand.RemoveIndicator(instanceId))
 
+    fun createOverlay(config: KLineOverlayConfig): String {
+        check(nextOverlaySequence > 0) { "Overlay id sequence exhausted" }
+        val id = "overlay-$overlayIdPrefix-${nextOverlaySequence++}"
+        dispatch(KLineControllerCommand.CreateOverlay(config.toInstance(id)))
+        return id
+    }
+
+    fun updateOverlay(
+        instanceId: String,
+        config: KLineOverlayConfig,
+    ) {
+        require(instanceId.isNotBlank()) { "Overlay instance id must not be blank" }
+        dispatch(KLineControllerCommand.UpdateOverlay(config.toInstance(instanceId)))
+    }
+
+    fun removeOverlay(instanceId: String) {
+        require(instanceId.isNotBlank()) { "Overlay instance id must not be blank" }
+        dispatch(KLineControllerCommand.RemoveOverlay(instanceId))
+    }
+
     internal fun attach(target: KLineChartControllerTarget) {
         this.target = target
         while (pendingCommands.isNotEmpty()) {
@@ -71,6 +97,20 @@ class KLineChartController {
             pendingCommands.addLast(command)
         } else {
             currentTarget.execute(command)
+        }
+    }
+}
+
+@OptIn(ExperimentalAtomicApi::class)
+private object KLineOverlayControllerIdAllocator {
+    private val nextPrefix = AtomicLong(1)
+
+    fun allocatePrefix(): Long {
+        while (true) {
+            val prefix = nextPrefix.load()
+            check(prefix > 0) { "Overlay controller id prefix sequence exhausted" }
+            val next = if (prefix == Long.MAX_VALUE) 0 else prefix + 1
+            if (nextPrefix.compareAndSet(prefix, next)) return prefix
         }
     }
 }
@@ -94,4 +134,7 @@ internal sealed interface KLineControllerCommand {
     data class AddIndicator(val instance: KLineIndicatorInstance) : KLineControllerCommand
     data class UpdateIndicator(val instance: KLineIndicatorInstance) : KLineControllerCommand
     data class RemoveIndicator(val instanceId: String) : KLineControllerCommand
+    data class CreateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
+    data class UpdateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
+    data class RemoveOverlay(val instanceId: String) : KLineControllerCommand
 }

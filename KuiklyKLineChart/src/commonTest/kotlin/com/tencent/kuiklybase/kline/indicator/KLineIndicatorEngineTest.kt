@@ -1,6 +1,7 @@
 package com.tencent.kuiklybase.kline.indicator
 
 import com.tencent.kuiklybase.kline.data.KLineBar
+import com.tencent.kuiklybase.kline.overlay.KLineBuiltInOverlays
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -123,6 +124,10 @@ class KLineIndicatorEngineTest {
 
         engine.calculate(first, bars, dataRevision = 1)
         engine.calculate(second, bars, dataRevision = 1)
+        assertEquals(1, template.calculationCount)
+
+        registry.registerOverlay(KLineBuiltInOverlays.HORIZONTAL_LINE)
+        engine.calculate(first, bars, dataRevision = 1)
         assertEquals(1, template.calculationCount)
 
         engine.calculate(first, bars, dataRevision = 2)

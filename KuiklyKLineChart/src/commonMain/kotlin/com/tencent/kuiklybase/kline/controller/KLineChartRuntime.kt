@@ -75,6 +75,9 @@ internal class KLineChartRuntime(
             is KLineControllerCommand.AddIndicator -> store.setIndicator(command.instance)
             is KLineControllerCommand.UpdateIndicator -> store.setIndicator(command.instance)
             is KLineControllerCommand.RemoveIndicator -> store.removeIndicator(command.instanceId)
+            is KLineControllerCommand.CreateOverlay -> store.addOverlay(command.instance)
+            is KLineControllerCommand.UpdateOverlay -> store.updateOverlay(command.instance)
+            is KLineControllerCommand.RemoveOverlay -> store.removeOverlay(command.instanceId)
         }
     }
 

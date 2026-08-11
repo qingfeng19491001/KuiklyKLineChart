@@ -1,5 +1,7 @@
 package com.tencent.kuiklybase.kline.indicator
 
+import com.tencent.kuiklybase.kline.overlay.KLineBuiltInOverlays
+
 object KLineBuiltInIndicators {
     val templates: List<KLineIndicatorTemplate> = listOf(
         KLineMovingAverageIndicator,
@@ -16,5 +18,8 @@ object KLineBuiltInIndicators {
         KLineBbdIndicator,
     )
 
-    fun registry(): KLineExtensionRegistry = KLineExtensionRegistry(templates)
+    fun registry(): KLineExtensionRegistry = KLineExtensionRegistry(
+        templates = templates,
+        overlayTemplates = KLineBuiltInOverlays.templates,
+    )
 }

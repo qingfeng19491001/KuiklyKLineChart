@@ -9,6 +9,10 @@ import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.data.StaticKLineDataSource
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayConfig
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayFigureStyle
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayPoint
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneKind
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
@@ -16,6 +20,8 @@ import com.tencent.kuiklybase.kline.store.KLineStore
 import com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class KLineChartControllerTest {
     @Test
@@ -124,6 +130,65 @@ class KLineChartControllerTest {
         assertEquals(emptyMap(), store.snapshot.indicatorResults)
         controller.removeIndicator("price-ma")
         assertEquals(emptyList(), store.snapshot.indicatorInstances)
+    }
+
+    @Test
+    fun queuedOverlayCommandsReturnStableIdsAndMutateTheStoreAfterAttach() {
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val controller = KLineChartController()
+        val initial = KLineOverlayConfig(
+            templateName = "segment",
+            groupId = "analysis",
+            paneId = "price",
+            points = listOf(KLineOverlayPoint(1, 10.0), KLineOverlayPoint(2, 20.0)),
+            magnetMode = KLineOverlayMagnetMode.WEAK,
+            zIndex = 3,
+            styles = mapOf("default" to KLineOverlayFigureStyle(color = "#ff0000")),
+        )
+
+        val firstId = controller.createOverlay(initial)
+        val secondId = controller.createOverlay(initial.copy(groupId = null, zIndex = 4))
+        controller.updateOverlay(firstId, initial.copy(visible = false, locked = true, zIndex = 8))
+
+        assertTrue(firstId.endsWith("-1"))
+        assertEquals(firstId.substringBeforeLast("-"), secondId.substringBeforeLast("-"))
+        assertTrue(secondId.endsWith("-2"))
+        assertEquals(emptyList(), store.snapshot.overlayInstances)
+
+        controller.attach(runtime)
+        assertEquals(listOf(secondId, firstId), store.snapshot.overlayInstances.map { it.id })
+        val updatedFirst = store.snapshot.overlayInstances.first { it.id == firstId }
+        assertEquals(false, updatedFirst.visible)
+        assertEquals(true, updatedFirst.locked)
+        assertEquals(8, updatedFirst.zIndex)
+        assertEquals("#ff0000", updatedFirst.styles.getValue("default").color)
+
+        controller.removeOverlay(secondId)
+        assertEquals(listOf(firstId), store.snapshot.overlayInstances.map { it.id })
+    }
+
+    @Test
+    fun rebuiltControllersAllocateDistinctOverlayIdsForTheSameStore() {
+        val store = KLineStore()
+        val runtime = KLineChartRuntime(store, KLineDataSession(StaticKLineDataSource(emptyList()), store))
+        val config = KLineOverlayConfig(
+            templateName = "horizontal_line",
+            paneId = "price",
+            points = listOf(KLineOverlayPoint(1, 10.0)),
+        )
+        val firstController = KLineChartController()
+        val firstId = firstController.createOverlay(config)
+        firstController.attach(runtime)
+        firstController.detach(runtime)
+
+        val secondController = KLineChartController()
+        secondController.attach(runtime)
+        val secondId = secondController.createOverlay(config)
+
+        assertNotEquals(firstId, secondId)
+        assertTrue(firstId.startsWith("overlay-") && secondId.startsWith("overlay-"))
+        assertEquals(setOf(firstId, secondId), store.snapshot.overlayInstances.map { it.id }.toSet())
     }
 
     private fun pane(
