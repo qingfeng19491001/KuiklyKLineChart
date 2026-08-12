@@ -26,11 +26,14 @@ data class KLineFormatOptions(
 
 interface KLineFormatter {
     fun formatDate(timestampMillis: Long?): String
+    fun formatTimeShort(timestampMillis: Long?): String
+    fun formatAxisTick(baseMillis: Long?, tickMillis: Long): String
     fun formatPrice(value: Double?): String
     fun formatVolume(value: Double?): String
     fun formatTurnover(value: Double?): String
     fun formatPercentage(value: Double?): String
     fun formatIndicatorValue(value: Double?, precision: Int): String
+    fun formatPriceChange(current: Double?, previousClose: Double?): String
 }
 
 class KLineFormatterOptions {
@@ -68,12 +71,18 @@ data class KLineFormatters(
 
     override fun formatDate(timestampMillis: Long?): String =
         dateDelegate.formatDate(timestampMillis)
+    override fun formatTimeShort(timestampMillis: Long?): String =
+        dateDelegate.formatTimeShort(timestampMillis)
+    override fun formatAxisTick(baseMillis: Long?, tickMillis: Long): String =
+        dateDelegate.formatAxisTick(baseMillis, tickMillis)
     override fun formatPrice(value: Double?): String = priceDelegate.formatPrice(value)
     override fun formatVolume(value: Double?): String = volumeDelegate.formatVolume(value)
     override fun formatTurnover(value: Double?): String = turnoverDelegate.formatTurnover(value)
     override fun formatPercentage(value: Double?): String = percentageDelegate.formatPercentage(value)
     override fun formatIndicatorValue(value: Double?, precision: Int): String =
         indicatorValueDelegate.formatIndicatorValue(value, precision)
+    override fun formatPriceChange(current: Double?, previousClose: Double?): String =
+        priceDelegate.formatPriceChange(current, previousClose)
 
     companion object {
         val DEFAULT: KLineFormatters = KLineFormatterOptions().resolved()
@@ -83,13 +92,35 @@ data class KLineFormatters(
 class DefaultKLineFormatter(val options: KLineFormatOptions = KLineFormatOptions()) : KLineFormatter {
     override fun formatDate(timestampMillis: Long?): String {
         if (timestampMillis == null) return options.fallbackText
-        val localSeconds = floorDiv(timestampMillis, 1000L) + options.timeZone.offsetMinutes * 60L
-        val days = floorDiv(localSeconds, 86_400L)
-        val secondsOfDay = floorMod(localSeconds, 86_400L).toInt()
-        val date = civilFromDays(days)
-        if (date.first !in 0..9999) return options.fallbackText
-        return "${date.first.pad(4)}-${date.second.pad(2)}-${date.third.pad(2)} " +
-            "${(secondsOfDay / 3600).pad(2)}:${((secondsOfDay % 3600) / 60).pad(2)}"
+        val (y, mo, d, h, mi) = toLocalParts(timestampMillis)
+        if (y !in 0..9999) return options.fallbackText
+        return "${y.pad(4)}-${mo.pad(2)}-${d.pad(2)} ${h.pad(2)}:${mi.pad(2)}"
+    }
+
+    override fun formatTimeShort(timestampMillis: Long?): String {
+        if (timestampMillis == null) return options.fallbackText
+        val (y, mo, d, h, mi) = toLocalParts(timestampMillis)
+        if (y !in 0..9999) return options.fallbackText
+        return if (options.language == KLineLanguage.CHINESE) {
+            "${mo.pad(2)}-${d.pad(2)} ${h.pad(2)}:${mi.pad(2)}"
+        } else {
+            "${h.pad(2)}:${mi.pad(2)}"
+        }
+    }
+
+    override fun formatAxisTick(baseMillis: Long?, tickMillis: Long): String {
+        if (baseMillis == null) return formatTimeShort(timestampMillis = tickMillis)
+        val base = toLocalParts(baseMillis)
+        val tick = toLocalParts(tickMillis)
+        val sameYear = base.y == tick.y
+        val sameMonth = sameYear && base.mo == tick.mo
+        val sameDay = sameMonth && base.d == tick.d
+        return when {
+            sameDay -> "${tick.h.pad(2)}:${tick.mi.pad(2)}"
+            sameMonth -> "${tick.d.pad(2)} ${tick.h.pad(2)}:${tick.mi.pad(2)}"
+            sameYear -> "${tick.mo.pad(2)}-${tick.d.pad(2)}"
+            else -> "${tick.y.pad(4)}-${tick.mo.pad(2)}"
+        }
     }
 
     override fun formatPrice(value: Double?) = fixedOrFallback(value, options.pricePrecision, options.useGrouping)
@@ -105,6 +136,30 @@ class DefaultKLineFormatter(val options: KLineFormatOptions = KLineFormatOptions
     override fun formatIndicatorValue(value: Double?, precision: Int): String {
         require(precision in 0..12) { "Precision must be between 0 and 12" }
         return fixedOrFallback(value, precision, options.useGrouping)
+    }
+
+    override fun formatPriceChange(current: Double?, previousClose: Double?): String {
+        if (current == null || previousClose == null || !current.isFinite() || !previousClose.isFinite() || previousClose == 0.0) {
+            return options.fallbackText
+        }
+        val diff = current - previousClose
+        val pct = diff / previousClose
+        val signStr = if (diff >= 0) "+" else ""
+        return "$signStr${fixed(diff, options.pricePrecision, options.useGrouping)}  " +
+            "$signStr${fixed(pct * 100.0, options.percentagePrecision, false)}%"
+    }
+
+    private data class LocalParts(val y: Int, val mo: Int, val d: Int, val h: Int, val mi: Int)
+
+    private fun toLocalParts(timestampMillis: Long): LocalParts {
+        val localSeconds = floorDiv(timestampMillis, 1000L) + options.timeZone.offsetMinutes * 60L
+        val days = floorDiv(localSeconds, 86_400L)
+        val secondsOfDay = floorMod(localSeconds, 86_400L).toInt()
+        val date = civilFromDays(days)
+        return LocalParts(
+            y = date.first, mo = date.second, d = date.third,
+            h = secondsOfDay / 3600, mi = (secondsOfDay % 3600) / 60,
+        )
     }
 
     private fun compact(value: Double?, precision: Int): String {

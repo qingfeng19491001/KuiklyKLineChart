@@ -1,6 +1,7 @@
 package com.tencent.kuiklybase.kline.interaction
 
 import com.tencent.kuiklybase.kline.axis.KLineYCoordinateSystem
+import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayEngine
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayFigure
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
@@ -51,6 +52,23 @@ class KLineOverlayHitTester(
             }
         }
         return null
+    }
+
+    companion object {
+        private val defaultEngine = KLineOverlayEngine(KLineExtensionRegistry())
+        private val defaultTester = KLineOverlayHitTester(defaultEngine)
+
+        fun hitTest(
+            instance: KLineOverlayInstance,
+            pixelX: Double,
+            pixelY: Double,
+            xCoordinates: KLineXCoordinateSystem,
+            yCoordinates: KLineYCoordinateSystem,
+            hitRadius: Double = 8.0,
+            controlPointRadius: Double = hitRadius,
+        ): KLineOverlayHit? = defaultTester.hitTest(
+            listOf(instance), pixelX, pixelY, xCoordinates, yCoordinates, hitRadius, controlPointRadius,
+        )
     }
 
     private fun hitsFigure(

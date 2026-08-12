@@ -1,29 +1,19 @@
 plugins {
     kotlin("multiplatform")
+    kotlin("native.cocoapods")
     id("com.android.library")
     id("com.google.devtools.ksp")
-    `maven-publish`
 }
-
-group = providers.gradleProperty("GROUP_ID").get()
-version = providers.gradleProperty("MAVEN_VERSION").get()
 
 kotlin {
     androidTarget {
-        publishLibraryVariants("release")
         compilations.all {
             kotlinOptions.jvmTarget = "1.8"
         }
     }
     js(IR) {
         browser()
-        nodejs {
-            testTask {
-                useMocha {
-                    timeout = "10s"
-                }
-            }
-        }
+        nodejs()
     }
     iosX64()
     iosArm64()
@@ -31,20 +21,34 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":KuiklyKLineChart"))
             implementation("com.tencent.kuikly-open:core:${providers.gradleProperty("KUIKLY_VERSION").get()}")
             implementation("com.tencent.kuikly-open:core-annotations:${providers.gradleProperty("KUIKLY_VERSION").get()}")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
         }
+    }
+
+    cocoapods {
+        summary = "Kuikly K-Line Chart Demo"
+        homepage = "https://github.com/klinecharts/KuiklyKLineChart"
+        version = "1.0"
+        ios.deploymentTarget = "14.1"
+        framework {
+            isStatic = true
+            baseName = "shared"
+        }
+        license = "MIT"
+        extraSpecAttributes["resources"] = "['src/commonMain/assets/**']"
     }
 }
 
 ksp {
-    arg("moduleId", "KuiklyKLineChart")
-    arg("isMainModule", "false")
+    arg("moduleId", "shared")
+    arg("isMainModule", "true")
+    arg("subModules", "KuiklyKLineChart")
     arg("enableMultiModule", "true")
 }
 
@@ -59,13 +63,11 @@ dependencies {
 }
 
 android {
-    namespace = "com.tencent.kuiklybase.kline"
+    namespace = "com.tencent.kuiklybase.kline.demo.shared"
     compileSdk = 34
-
     defaultConfig {
         minSdk = 21
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8

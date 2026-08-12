@@ -19,6 +19,10 @@ class KLineExtensionRegistry(
         overlayTemplates.forEach(::registerOverlay)
     }
 
+    companion object {
+        fun default(): KLineExtensionRegistry = KLineBuiltInIndicators.registry()
+    }
+
     fun register(template: KLineIndicatorTemplate) {
         require(template.name.isNotBlank()) { "Indicator template name must not be blank" }
         indicatorTemplates[template.name] = template

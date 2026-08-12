@@ -6,7 +6,12 @@ data class KLinePaneLayout(
     val paneId: String,
     val rect: KLineRect,
     val visible: Boolean,
-)
+) {
+    fun separatorHit(pixelY: Double, tolerance: Double = 6.0): Boolean {
+        val edge = rect.bottom
+        return (pixelY - edge) in -tolerance..tolerance
+    }
+}
 
 object KLinePaneLayoutEngine {
     fun layout(

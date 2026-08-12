@@ -96,6 +96,22 @@ interface KLineIndicatorTemplate {
      * comparison for empty or out-of-bounds ranges.
      */
     fun outputAffectedRange(context: KLineIndicatorUpdateContext): IntRange? = null
+
+    /** Build a concrete [KLineIndicatorInstance] tied to a pane, with optional param override. */
+    fun instance(
+        id: String,
+        paneId: String,
+        params: List<Double> = this.defaultParams,
+        precision: Int = 2,
+        visible: Boolean = true,
+    ): KLineIndicatorInstance = KLineIndicatorInstance(
+        id = id,
+        templateName = this.name,
+        paneId = paneId,
+        params = params.ifEmpty { this.defaultParams },
+        precision = precision,
+        visible = visible,
+    )
 }
 
 /** Shared affected-window reuse for built-ins with finite history. */

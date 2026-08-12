@@ -130,6 +130,57 @@ class KLineOverlayInteractionEngine(
         return true
     }
 
+    fun dragPointTo(
+        pixelX: Double,
+        pixelY: Double,
+        xCoordinates: KLineXCoordinateSystem,
+        yCoordinates: KLineYCoordinateSystem,
+    ): Boolean = updateDragPoint(pixelX, pixelY, xCoordinates, yCoordinates)
+
+    fun dragOverlayTo(
+        pixelX: Double,
+        pixelY: Double,
+        xCoordinates: KLineXCoordinateSystem,
+        yCoordinates: KLineYCoordinateSystem,
+    ): Boolean = updateDragOverlay(pixelX, pixelY, xCoordinates, yCoordinates)
+
+    fun updateDraftPoint(
+        pixelX: Double,
+        pixelY: Double,
+        xCoordinates: KLineXCoordinateSystem,
+        yCoordinates: KLineYCoordinateSystem,
+        paneId: String,
+    ): Boolean {
+        val session = store.snapshot.interactionSession as? KLineInteractionSession.DrawingOverlay ?: return false
+        val point = KLineMagnetResolver.resolve(
+            pixelX, pixelY, session.magnetMode, store.snapshot.bars, xCoordinates, yCoordinates,
+        ) ?: return false
+        val template = requireNotNull(registry.findOverlay(session.templateName))
+        val updated = session.points.toMutableList()
+        if (updated.isEmpty()) {
+            updated.add(point)
+        } else {
+            updated[updated.lastIndex] = point
+        }
+        if (template.drawingMode == KLineOverlayDrawingMode.CONTINUOUS && updated.size >= template.requiredPointCount) {
+            // Append continuously
+        }
+        store.updateInteraction(session.copy(points = updated, paneId = paneId))
+        return true
+    }
+
+    fun commitDraftIfReady(): Boolean {
+        val session = store.snapshot.interactionSession as? KLineInteractionSession.DrawingOverlay ?: return false
+        val template = requireNotNull(registry.findOverlay(session.templateName))
+        when {
+            session.points.size < template.requiredPointCount -> {
+                store.cancelInteraction()
+                return false
+            }
+            else -> return completeDraft(session)
+        }
+    }
+
     fun endInteraction() = store.finishInteraction()
 
     fun cancelInteraction() {

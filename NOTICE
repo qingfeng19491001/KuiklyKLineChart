@@ -1,0 +1,8 @@
+KuiklyKLineChart — NOTICE
+
+This product is a Kuikly-contrib component built on the Kuikly UI Framework.
+Kuikly is released under its own license; see: https://github.com/Tencent/KuiklyUI
+
+This component redistributes no third-party binary artifacts. Third-party
+open-source libraries referenced by the build scripts are distributed under
+their own licenses as noted in their respective pom.xml / build files.
