@@ -1,5 +1,7 @@
 package com.tencent.kuiklybase.kline
 
+enum class KLinePriceStyle { CANDLE, LINE }
+
 /** Immutable rendering/interaction presets sharing the same planner and pipeline. */
 enum class KLineChartMode(
     val axisLabels: Boolean,

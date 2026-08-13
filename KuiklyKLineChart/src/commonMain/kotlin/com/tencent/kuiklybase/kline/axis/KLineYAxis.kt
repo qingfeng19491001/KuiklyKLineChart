@@ -12,6 +12,7 @@ data class KLineYAxis(
     val maxValue: Double,
     val mode: KLineYAxisMode = KLineYAxisMode.NORMAL,
     val referenceValue: Double? = null,
+    val autoScale: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "Y axis id must not be blank" }
@@ -28,4 +29,3 @@ data class KLineYAxis(
         }
     }
 }
-

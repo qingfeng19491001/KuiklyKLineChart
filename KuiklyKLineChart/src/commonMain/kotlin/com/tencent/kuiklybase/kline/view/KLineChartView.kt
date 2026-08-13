@@ -5,6 +5,8 @@ import com.tencent.kuikly.core.base.DeclarativeBaseView
 import com.tencent.kuikly.core.base.ViewContainer
 import com.tencent.kuikly.core.base.event.Event
 import com.tencent.kuikly.core.nvi.serialization.json.JSONObject
+import com.tencent.kuiklybase.kline.controller.KLineChartController
+import com.tencent.kuiklybase.kline.data.KLineDataSource
 
 /**
  * Kuikly 声明式 K 线图组件。
@@ -77,6 +79,73 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
         }
     }
 
+    public fun scrollToTimestamp(timestamp: Long) {
+        performTaskWhenRenderViewDidLoad { renderView?.callMethod("scrollToTimestamp", JSONObject().apply { put("timestamp", timestamp) }.toString()) }
+    }
+
+    public fun scrollByBars(count: Double) {
+        performTaskWhenRenderViewDidLoad { renderView?.callMethod("scrollByBars", JSONObject().apply { put("count", count) }.toString()) }
+    }
+
+    public fun zoomAtTimestamp(factor: Double, timestamp: Long) {
+        performTaskWhenRenderViewDidLoad { renderView?.callMethod("zoomAtTimestamp", JSONObject().apply { put("factor", factor); put("timestamp", timestamp) }.toString()) }
+    }
+
+    public fun loadBefore() { performTaskWhenRenderViewDidLoad { renderView?.callMethod("loadBefore", null) } }
+    public fun loadAfter() { performTaskWhenRenderViewDidLoad { renderView?.callMethod("loadAfter", null) } }
+    public fun retryInitialLoad() { performTaskWhenRenderViewDidLoad { renderView?.callMethod("retryInitialLoad", null) } }
+
+    /** Creates or replaces a pane from the documented JSON pane schema. */
+    public fun setPane(json: String) = callJson(METHOD_SET_PANE, json)
+
+    public fun removePane(paneId: String) = callJson(METHOD_REMOVE_PANE, jsonOf("paneId", paneId))
+
+    public fun movePane(paneId: String, index: Int) = callJson(
+        METHOD_MOVE_PANE,
+        JSONObject().apply { put("paneId", paneId); put("index", index) }.toString(),
+    )
+
+    /** state is `normal`, `minimized`, or `maximized`. */
+    public fun setPaneState(paneId: String, state: String) = callJson(
+        METHOD_SET_PANE_STATE,
+        JSONObject().apply { put("paneId", paneId); put("state", state) }.toString(),
+    )
+
+    /** Adds an indicator from the documented JSON indicator schema. */
+    public fun addIndicator(json: String) = callJson(METHOD_ADD_INDICATOR, json)
+
+    public fun updateIndicator(json: String) = callJson(METHOD_UPDATE_INDICATOR, json)
+
+    public fun removeIndicator(instanceId: String) = callJson(METHOD_REMOVE_INDICATOR, jsonOf("id", instanceId))
+
+    /** Creates an overlay and returns its generated id asynchronously. */
+    public fun createOverlay(json: String, callback: (String) -> Unit) = callJson(METHOD_CREATE_OVERLAY, json) { result ->
+        callback((result as? JSONObject)?.optString("id").orEmpty())
+    }
+
+    public fun updateOverlay(instanceId: String, json: String) {
+        val value = JSONObject(json).apply { put("id", instanceId) }
+        callJson(METHOD_UPDATE_OVERLAY, value.toString())
+    }
+
+    public fun removeOverlay(instanceId: String) = callJson(METHOD_REMOVE_OVERLAY, jsonOf("id", instanceId))
+
+    /** Exports a JSON snapshot suitable for [restoreState]. */
+    public fun exportState(callback: (String) -> Unit) = callJson(METHOD_EXPORT_STATE, null) { result ->
+        callback((result as? JSONObject)?.toString().orEmpty())
+    }
+
+    public fun restoreState(json: String) = callJson(METHOD_RESTORE_STATE, json)
+
+    private fun jsonOf(key: String, value: String): String = JSONObject().apply { put(key, value) }.toString()
+
+    private fun callJson(method: String, params: String?, callback: ((Any?) -> Unit)? = null) {
+        performTaskWhenRenderViewDidLoad {
+            if (callback == null) renderView?.callMethod(method, params)
+            else renderView?.callMethod(method, params, callback)
+        }
+    }
+
     /**
      * 开始绘制画线工具。
      *
@@ -138,6 +207,18 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
         public const val METHOD_CANCEL_INTERACTION: String = "cancelInteraction"
         public const val METHOD_CLEAR_CROSSHAIR: String = "clearCrosshair"
         public const val METHOD_DELETE_SELECTED_OVERLAY: String = "deleteSelectedOverlay"
+        public const val METHOD_SET_PANE: String = "setPane"
+        public const val METHOD_REMOVE_PANE: String = "removePane"
+        public const val METHOD_MOVE_PANE: String = "movePane"
+        public const val METHOD_SET_PANE_STATE: String = "setPaneState"
+        public const val METHOD_ADD_INDICATOR: String = "addIndicator"
+        public const val METHOD_UPDATE_INDICATOR: String = "updateIndicator"
+        public const val METHOD_REMOVE_INDICATOR: String = "removeIndicator"
+        public const val METHOD_CREATE_OVERLAY: String = "createOverlay"
+        public const val METHOD_UPDATE_OVERLAY: String = "updateOverlay"
+        public const val METHOD_REMOVE_OVERLAY: String = "removeOverlay"
+        public const val METHOD_EXPORT_STATE: String = "exportState"
+        public const val METHOD_RESTORE_STATE: String = "restoreState"
     }
 }
 
@@ -148,6 +229,8 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
  * Native 侧在 `setProp(propKey, propValue)` 中按 key 接收。
  */
 public class KLineChartAttr : Attr() {
+
+    internal fun binding(id: String): KLineChartAttr { "bindingId" with id; return this }
 
     /**
      * 设置交易标的。
@@ -195,6 +278,12 @@ public class KLineChartAttr : Attr() {
         return this
     }
 
+    /** Selects price rendering: `candle` or `line`. */
+    public fun priceStyle(name: String): KLineChartAttr {
+        "priceStyle" with name
+        return this
+    }
+
     /** Replaces the static/pushed candle snapshot encoded as a JSON array. */
     public fun bars(json: String): KLineChartAttr {
         "bars" with json
@@ -235,6 +324,40 @@ public class KLineChartAttr : Attr() {
  */
 public class KLineChartEvent : Event() {
 
+    public fun onVisibleRangeChange(handler: (Int, Int) -> Unit) = registerJson("onVisibleRangeChange") { handler(it.optInt("startIndex"), it.optInt("endIndex")) }
+    public fun onBarClick(handler: (Long, Int) -> Unit) = registerJson("onBarClick") { handler(it.optLong("timestamp"), it.optInt("index")) }
+    public fun onLoadStateChange(handler: (String, String, String) -> Unit) = registerJson("onLoadStateChange") { handler(it.optString("initial"), it.optString("before"), it.optString("after")) }
+    public fun onOverlayClick(handler: (String?) -> Unit) = registerJson("onOverlayClick") { handler(it.optString("id").ifBlank { null }) }
+    public fun onOverlayChange(handler: (Long) -> Unit) = registerJson("onOverlayChange") { handler(it.optLong("revision")) }
+    public fun onPeriodChange(handler: (Int, String) -> Unit) = registerJson("onPeriodChange") { handler(it.optInt("value"), it.optString("unit")) }
+    public fun onIndicatorChange(handler: (List<String>) -> Unit) = registerJson("onIndicatorChange") { handler(it.optString("ids").split(',').filter(String::isNotBlank)) }
+    public fun onPaneLayoutChange(handler: (Float, Float, Float) -> Unit) {
+        register("onPaneLayoutChange") { params ->
+            fun number(name: String): Float = when (params) {
+                is JSONObject -> params.optDouble(name).toFloat()
+                is Map<*, *> -> (params[name] as? Number)?.toFloat() ?: 0f
+                else -> 0f
+            }
+            handler(number("priceTop"), number("firstTop"), number("secondTop"))
+        }
+    }
+
+    public fun onPaneHeaderClick(handler: (String) -> Unit) {
+        register("onPaneHeaderClick") { params ->
+            handler(
+                when (params) {
+                    is JSONObject -> params.optString("paneId")
+                    is Map<*, *> -> params["paneId"] as? String ?: ""
+                    else -> ""
+                },
+            )
+        }
+    }
+
+    private fun registerJson(name: String, handler: (JSONObject) -> Unit) {
+        register(name) { params -> handler(params as? JSONObject ?: JSONObject()) }
+    }
+
     public fun onSignalClick(handler: (id: String, title: String, summary: String) -> Unit) {
         register(EVENT_SIGNAL_CLICK) { params ->
             val json = params as? JSONObject ?: JSONObject()
@@ -270,6 +393,13 @@ public class KLineChartEvent : Event() {
         public const val EVENT_ERROR: String = "onError"
         public const val EVENT_CROSSHAIR_CHANGE: String = "onCrosshairChange"
         public const val EVENT_SIGNAL_CLICK: String = "onSignalClick"
+        public const val EVENT_VISIBLE_RANGE_CHANGE: String = "onVisibleRangeChange"
+        public const val EVENT_BAR_CLICK: String = "onBarClick"
+        public const val EVENT_LOAD_STATE_CHANGE: String = "onLoadStateChange"
+        public const val EVENT_OVERLAY_CLICK: String = "onOverlayClick"
+        public const val EVENT_OVERLAY_CHANGE: String = "onOverlayChange"
+        public const val EVENT_PERIOD_CHANGE: String = "onPeriodChange"
+        public const val EVENT_INDICATOR_CHANGE: String = "onIndicatorChange"
     }
 }
 
@@ -280,4 +410,16 @@ public class KLineChartEvent : Event() {
  */
 public fun ViewContainer<*, *>.KLineChart(init: KLineChartView.() -> Unit) {
     addChild(KLineChartView(), init)
+}
+
+public fun ViewContainer<*, *>.KLineChart(
+    dataSource: KLineDataSource,
+    controller: KLineChartController = KLineChartController(),
+    init: KLineChartView.() -> Unit = {},
+) {
+    val bindingId = KLineChartBindingRegistry.register(dataSource, controller)
+    addChild(KLineChartView()) {
+        attr { binding(bindingId) }
+        init()
+    }
 }

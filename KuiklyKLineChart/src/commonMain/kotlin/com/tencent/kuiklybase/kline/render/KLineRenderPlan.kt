@@ -8,6 +8,7 @@ import com.tencent.kuiklybase.kline.layout.KLineRect
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayFigureStyle
 import com.tencent.kuiklybase.kline.pane.KLinePaneKind
 import com.tencent.kuiklybase.kline.KLineChartMode
+import com.tencent.kuiklybase.kline.KLinePriceStyle
 
 data class KLineVisibleRange(val startInclusive: Int, val endExclusive: Int) {
     init { require(startInclusive >= 0 && endExclusive >= startInclusive) }
@@ -19,11 +20,18 @@ data class KLineVisibleRange(val startInclusive: Int, val endExclusive: Int) {
 
 data class KLinePoint(val x: Double, val y: Double)
 data class KLineRenderBar(val index: Int, val bar: KLineBar, val x: Double)
-data class KLineRenderPane(val id: String, val kind: KLinePaneKind, val rect: KLineRect, val axis: KLineRenderAxis)
+data class KLineRenderPane(
+    val id: String,
+    val kind: KLinePaneKind,
+    val rect: KLineRect,
+    val axis: KLineRenderAxis,
+    val headerRect: KLineRect? = null,
+    val xAxisRect: KLineRect? = null,
+)
 data class KLineRenderAxis(val id: String, val minValue: Double, val maxValue: Double, val valueToPixelScale: Double, val valueToPixelOffset: Double) {
     fun valueToPixel(value: Double): Double = value * valueToPixelScale + valueToPixelOffset
 }
-class KLineIndicatorRenderSeries(val paneId: String, val type: KLineIndicatorFigureType, val color: String, points: List<KLinePoint>) {
+class KLineIndicatorRenderSeries(val paneId: String, val key: String, val type: KLineIndicatorFigureType, val color: String, val latestValue: Double?, points: List<KLinePoint>) {
     val points: List<KLinePoint> = frozenList(points)
 }
 
@@ -41,6 +49,7 @@ class KLineTooltipRenderData(val bounds: KLineRect, lines: List<String>) { val l
 
 data class KLineRenderFeatures(
     val axisLabels: Boolean,
+    val priceAnnotations: Boolean,
     val interaction: Boolean,
     val crosshair: Boolean,
     val tooltip: Boolean,
@@ -48,6 +57,7 @@ data class KLineRenderFeatures(
     companion object {
         internal fun from(mode: KLineChartMode) = KLineRenderFeatures(
             mode.axisLabels,
+            mode == KLineChartMode.FULL,
             mode.interaction,
             mode.crosshair,
             mode.tooltip,
@@ -58,6 +68,7 @@ data class KLineRenderFeatures(
 class KLineRenderPlan internal constructor(
     val bounds: KLineRect,
     val visibleRange: KLineVisibleRange,
+    val contentRange: KLineVisibleRange = visibleRange,
     bars: List<KLineRenderBar>,
     panes: List<KLineRenderPane>,
     indicators: List<KLineIndicatorRenderSeries>,
@@ -67,6 +78,9 @@ class KLineRenderPlan internal constructor(
     val theme: KLineTheme,
     val formatters: KLineFormatters,
     val barSpace: Double,
+    val priceStyle: KLinePriceStyle = KLinePriceStyle.CANDLE,
+    val selectedBar: KLineRenderBar? = null,
+    internal val clickSelectedBar: KLineRenderBar? = null,
     val features: KLineRenderFeatures = KLineRenderFeatures.from(KLineChartMode.FULL),
 ) {
     val bars: List<KLineRenderBar> = frozenList(bars)

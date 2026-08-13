@@ -101,7 +101,9 @@ class KLineInteractionEngine(
         yCoordinates: KLineYCoordinateSystem,
     ): Boolean {
         val selection = marketSelection(paneId, pixelX, pixelY, xCoordinates, yCoordinates) ?: return false
-        store.setClickSelection(selection)
+        store.setClickSelection(
+            if (store.snapshot.clickSelection?.index == selection.index) null else selection,
+        )
         return true
     }
 
@@ -172,11 +174,15 @@ class KLineInteractionEngine(
         yCoordinates: KLineYCoordinateSystem,
     ): KLineBarSelection? {
         if (!pixelX.isFinite() || !pixelY.isFinite() || paneId.isBlank()) return null
-        val timestamp = xCoordinates.pixelToTimestamp(pixelX) ?: return null
-        val index = store.snapshot.bars.binarySearchBy(timestamp) { it.timestamp }
-        if (index < 0) return null
+        val index = kotlin.math.round(xCoordinates.pixelToIndex(pixelX)).toInt()
+        val bar = store.snapshot.bars.getOrNull(index) ?: return null
+        if (kotlin.math.abs(xCoordinates.indexToPixel(index.toDouble()) - pixelX) > CLICK_HIT_RADIUS) return null
         val value = yCoordinates.pixelToValue(pixelY)
         if (!value.isFinite()) return null
-        return KLineBarSelection(paneId, timestamp, index, value)
+        return KLineBarSelection(paneId, bar.timestamp, index, value)
+    }
+
+    private companion object {
+        const val CLICK_HIT_RADIUS = 24.0
     }
 }

@@ -48,6 +48,7 @@ class KLineChartEngine(
     val errorFlow: StateFlow<KLineError?> = _errorFlow.asStateFlow()
 
     private val modeFlow = MutableStateFlow(KLineChartMode.FULL)
+    private val priceStyleFlow = MutableStateFlow(KLinePriceStyle.CANDLE)
     private val signalsFlow = MutableStateFlow(KLineSignalSet.EMPTY)
 
     private var currentBounds: KLineRect? = null
@@ -72,15 +73,19 @@ class KLineChartEngine(
     }
 
     fun renderPlanFlow(bounds: KLineRect, overscanBars: Int = 1): Flow<KLineRenderPlan> =
-        combine(snapshotFlow, modeFlow, signalsFlow) { snap, mode, signals ->
-            planner.create(snap, bounds, overscanBars, mode, signals.toOverlayInstances())
+        combine(snapshotFlow, modeFlow, signalsFlow, priceStyleFlow) { snap, mode, signals, priceStyle ->
+            planner.create(snap, bounds, overscanBars, mode, priceStyle, signals.toOverlayInstances())
         }
 
     fun latestRenderPlan(bounds: KLineRect, overscanBars: Int = 1): KLineRenderPlan =
-        planner.create(store.snapshot, bounds, overscanBars, modeFlow.value, signalsFlow.value.toOverlayInstances())
+        planner.create(store.snapshot, bounds, overscanBars, modeFlow.value, priceStyleFlow.value, signalsFlow.value.toOverlayInstances())
 
     fun setMode(mode: KLineChartMode) {
         modeFlow.value = mode
+    }
+
+    fun setPriceStyle(style: KLinePriceStyle) {
+        priceStyleFlow.value = style
     }
 
     fun setSignals(signals: List<KLineSignal>) {
@@ -100,18 +105,25 @@ class KLineChartEngine(
         val bars = snap.bars
         if (bars.isEmpty()) return KLinePointerDispatchOutcome.Ignored
         val xCoord = com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem(bounds, viewport, bars)
-        val paneLayouts = com.tencent.kuiklybase.kline.pane.KLinePaneLayoutEngine.layout(snap.panes, bounds)
-        val hoveredLayout = paneLayouts.firstOrNull { layout ->
-            layout.visible && event.y in layout.rect.top..layout.rect.bottom
+        val renderPlan = latestRenderPlan(bounds)
+        val hoveredRenderPane = renderPlan.panes.firstOrNull { pane ->
+            event.y in pane.rect.top..pane.rect.bottom
         } ?: return KLinePointerDispatchOutcome.Ignored
-        val pane = snap.panes.firstOrNull { it.id == hoveredLayout.paneId } ?: return KLinePointerDispatchOutcome.Ignored
-        val yAxis = pane.yAxes.first()
-        val yCoord = com.tencent.kuiklybase.kline.axis.KLineYCoordinateSystem(hoveredLayout.rect, yAxis)
+        val pane = snap.panes.firstOrNull { it.id == hoveredRenderPane.id } ?: return KLinePointerDispatchOutcome.Ignored
+        val configuredAxis = pane.yAxes.first()
+        val yAxis = configuredAxis.copy(
+            minValue = hoveredRenderPane.axis.minValue,
+            maxValue = hoveredRenderPane.axis.maxValue,
+        )
+        val yCoord = com.tencent.kuiklybase.kline.axis.KLineYCoordinateSystem(hoveredRenderPane.rect, yAxis)
         if (event is KLinePointerEvent.Tap) {
-            val signal = signalsFlow.value.hitTest(
+            val signal = signalsFlow.value.hitTestRendered(renderPlan.overlays, event.x, event.y) ?: signalsFlow.value.hitTest(
                 signalsFlow.value.toOverlayInstances(), pane.id, event.x, event.y, xCoord, yCoord,
             )
             if (signal != null) return KLinePointerDispatchOutcome.SignalClick(signal)
+            if (pane.kind != com.tencent.kuiklybase.kline.pane.KLinePaneKind.PRICE) {
+                return KLinePointerDispatchOutcome.Handled
+            }
         }
         var overlayHit: com.tencent.kuiklybase.kline.interaction.KLineOverlayHit? = null
         for (instance in snap.overlayInstances) {
@@ -125,15 +137,17 @@ class KLineChartEngine(
             )
             if (hit != null) { overlayHit = hit; break }
         }
+        val paneLayouts = com.tencent.kuiklybase.kline.pane.KLinePaneLayoutEngine.layout(snap.panes, bounds)
         val separatorIndex = paneLayouts.indexOfFirst { layout ->
             layout.visible && layout.separatorHit(event.y, 6.0)
         }.takeIf { it >= 0 && it < paneLayouts.size - 1 }
         val gesture: com.tencent.kuiklybase.kline.interaction.KLineViewportGesture? = when {
+            event is KLinePointerEvent.Tap || event is KLinePointerEvent.LongPress -> null
             event is KLinePointerEvent.SecondaryDown -> com.tencent.kuiklybase.kline.interaction.KLineViewportGesture.SCALE
             event.pointerCount >= 2 -> com.tencent.kuiklybase.kline.interaction.KLineViewportGesture.SCALE
             else -> com.tencent.kuiklybase.kline.interaction.KLineViewportGesture.PAN
         }
-        val requestCrosshair = event is KLinePointerEvent.LongPress || event is KLinePointerEvent.SecondaryDown
+        val requestCrosshair = event is KLinePointerEvent.LongPress
         val ordinaryClick = event is KLinePointerEvent.Tap
         val request = com.tencent.kuiklybase.kline.interaction.KLinePointerDownRequest(
             paneId = pane.id,

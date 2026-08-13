@@ -10,6 +10,7 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayPoint
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayStyleKey
 import com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem
+import com.tencent.kuiklybase.kline.render.KLineOverlayRenderFigure
 
 enum class KLineSignalType { BUY, SELL, RISK, INFO }
 
@@ -63,8 +64,19 @@ class KLineSignalSet(signals: List<KLineSignal>) {
         pixelY: Double,
         xCoordinates: KLineXCoordinateSystem,
         yCoordinates: KLineYCoordinateSystem,
-        hitRadius: Double = 6.0,
+        hitRadius: Double = 18.0,
     ): KLineSignal? {
+        val textHit = overlayInstances.asReversed().firstNotNullOfOrNull { instance ->
+            if (instance.groupId != SIGNAL_GROUP_ID || instance.paneId != paneId) return@firstNotNullOfOrNull null
+            val signal = byOverlayId[instance.id] ?: return@firstNotNullOfOrNull null
+            val point = instance.points.firstOrNull() ?: return@firstNotNullOfOrNull null
+            val anchorX = xCoordinates.timestampToPixel(point.timestamp) ?: return@firstNotNullOfOrNull null
+            val anchorY = yCoordinates.valueToPixel(point.value)
+            val width = signal.title.length * 12.0 * 0.6
+            if (pixelX in (anchorX - hitRadius)..(anchorX + width + hitRadius) &&
+                pixelY in (anchorY - hitRadius)..(anchorY + 12.0 + hitRadius)) signal else null
+        }
+        if (textHit != null) return textHit
         val hit = KLineOverlayHitTester(KLineOverlayEngine(KLineExtensionRegistry.default())).hitTest(
             instances = overlayInstances.filter { it.groupId == SIGNAL_GROUP_ID && it.paneId == paneId },
             pixelX = pixelX,
@@ -74,6 +86,21 @@ class KLineSignalSet(signals: List<KLineSignal>) {
             hitRadius = hitRadius,
         ) ?: return null
         return byOverlayId[hit.instanceId]
+    }
+
+    /** Hit-tests the exact immutable figures consumed by the renderer. */
+    fun hitTestRendered(
+        figures: List<KLineOverlayRenderFigure>,
+        pixelX: Double,
+        pixelY: Double,
+        hitRadius: Double = 18.0,
+    ): KLineSignal? = figures.asReversed().firstNotNullOfOrNull { figure ->
+        val text = figure as? KLineOverlayRenderFigure.Text ?: return@firstNotNullOfOrNull null
+        val width = text.text.length * text.style.textSize * 0.6
+        if (pixelX !in (text.anchor.x - hitRadius)..(text.anchor.x + width + hitRadius) ||
+            pixelY !in (text.anchor.y - hitRadius)..(text.anchor.y + text.style.textSize + hitRadius)
+        ) return@firstNotNullOfOrNull null
+        signals.firstOrNull { it.title == text.text }
     }
 
     companion object {
