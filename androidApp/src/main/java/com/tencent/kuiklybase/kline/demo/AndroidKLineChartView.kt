@@ -8,35 +8,48 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import com.tencent.kuikly.core.render.android.export.IKuiklyRenderViewExport
 import com.tencent.kuikly.core.render.android.export.KuiklyRenderCallback
+import com.tencent.kuiklybase.kline.KLineChartMode
+import com.tencent.kuiklybase.kline.KLinePointerDispatchOutcome
 import com.tencent.kuiklybase.kline.KLinePointerEvent
+import com.tencent.kuiklybase.kline.axis.KLineYAxis
 import com.tencent.kuiklybase.kline.config.KLineTheme
 import com.tencent.kuiklybase.kline.controller.KLineChartController
+import com.tencent.kuiklybase.kline.data.KLineBar
 import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLinePeriodUnit
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.data.StaticKLineDataSource
 import com.tencent.kuiklybase.kline.demo.shared.KLineChartView
 import com.tencent.kuiklybase.kline.demo.shared.canvas.AndroidKLineCanvasAdapter
-import com.tencent.kuiklybase.kline.demo.shared.demo.RandomBarGenerator
-import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
-import com.tencent.kuiklybase.kline.axis.KLineYAxis
 import com.tencent.kuiklybase.kline.indicator.KLineBuiltInIndicators
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneKind
+import com.tencent.kuiklybase.kline.signal.KLineSignal
+import com.tencent.kuiklybase.kline.signal.KLineSignalType
+import org.json.JSONArray
 import org.json.JSONObject
 
 class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderViewExport {
-    private val controller = KLineChartController()
+    private var controller = KLineChartController()
     private var symbol = KLineSymbol("00700", "Demo Stock")
     private var period = KLinePeriod(1, KLinePeriodUnit.DAY)
     private var errorCallback: KuiklyRenderCallback? = null
     private var crosshairCallback: KuiklyRenderCallback? = null
+    private var signalClickCallback: KuiklyRenderCallback? = null
     private var lastCrosshair: com.tencent.kuiklybase.kline.interaction.KLineCrosshair? = null
     private val configuredPaneIds = linkedSetOf("price", "volume")
     private val configuredIndicatorIds = linkedSetOf("ma-price", "ma-price-10", "vol")
     private val density = resources.displayMetrics.density
-    private val innerView = KLineChartView(
-        dataSource = StaticKLineDataSource(RandomBarGenerator.defaultSymbolBars(count = 600)),
+    private var configuredMode = KLineChartMode.FULL
+    private var configuredTheme = KLineTheme.LIGHT
+    private var configuredSignals: List<KLineSignal> = emptyList()
+    private var configuredConfig: String? = null
+    private var pendingBridgeError: String? = null
+    private var innerView = createInnerView(emptyList())
+
+    private fun createInnerView(bars: List<KLineBar>) = KLineChartView(
+        dataSource = StaticKLineDataSource(bars),
         controller = controller,
         onInvalidate = { postInvalidateOnAnimation() },
         onSnapshot = { snapshot ->
@@ -61,6 +74,10 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
                 errorCallback?.invoke(mapOf("code" to error.code.name, "message" to error.message))
             }
         }
+    }.also { view ->
+        view.attach()
+        view.engine.setMode(configuredMode)
+        view.engine.setSignals(configuredSignals)
     }
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
@@ -99,7 +116,6 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     })
 
     init {
-        innerView.attach()
         controller.setMarket(symbol, period)
     }
 
@@ -117,19 +133,48 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
             true
         }
         "theme" -> {
-            controller.setTheme(if (propValue == "dark") KLineTheme.DARK else KLineTheme.LIGHT)
+            configuredTheme = if (propValue == "dark") KLineTheme.DARK else KLineTheme.LIGHT
+            controller.setTheme(configuredTheme)
+            true
+        }
+        "mode" -> {
+            configuredMode = if ((propValue as String).equals("compact", true)) KLineChartMode.COMPACT else KLineChartMode.FULL
+            innerView.engine.setMode(configuredMode)
+            postInvalidateOnAnimation()
+            true
+        }
+        "bars" -> {
+            runBridgeUpdate("bars") { replaceBars(parseBars(propValue as String)) }
+            true
+        }
+        "signals" -> {
+            runBridgeUpdate("signals") {
+                configuredSignals = parseSignals(propValue as String)
+                innerView.engine.setSignals(configuredSignals)
+                postInvalidateOnAnimation()
+            }
             true
         }
         "config" -> {
-            applyConfig(JSONObject(propValue as String))
+            runBridgeUpdate("config") {
+                val json = propValue as String
+                applyConfig(JSONObject(json))
+                configuredConfig = json
+            }
             true
         }
         "onError" -> {
             errorCallback = propValue as KuiklyRenderCallback
+            pendingBridgeError?.let(::emitBridgeError)
+            pendingBridgeError = null
             true
         }
         "onCrosshairChange" -> {
             crosshairCallback = propValue as KuiklyRenderCallback
+            true
+        }
+        "onSignalClick" -> {
+            signalClickCallback = propValue as KuiklyRenderCallback
             true
         }
         else -> super.setProp(propKey, propValue)
@@ -181,12 +226,74 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
         innerView.dispose()
         errorCallback = null
         crosshairCallback = null
+        signalClickCallback = null
         super.onDetachedFromWindow()
     }
 
     private fun dispatch(event: KLinePointerEvent) {
-        innerView.onPointerEvent(event)
+        val outcome = innerView.onPointerEvent(event)
+        if (outcome is KLinePointerDispatchOutcome.SignalClick) {
+            val signal = outcome.signal
+            signalClickCallback?.invoke(mapOf("id" to signal.id, "title" to signal.title, "summary" to signal.summary))
+        }
         postInvalidateOnAnimation()
+    }
+
+    private fun replaceBars(bars: List<KLineBar>) {
+        innerView.dispose()
+        controller = KLineChartController()
+        resetConfiguredComponents()
+        innerView = createInnerView(bars)
+        if (width > 0 && height > 0) innerView.onSizeChanged(width, height)
+        controller.setMarket(symbol, period)
+        controller.setTheme(configuredTheme)
+        configuredConfig?.let { applyConfig(JSONObject(it)) }
+        postInvalidateOnAnimation()
+    }
+
+    private inline fun runBridgeUpdate(property: String, update: () -> Unit) {
+        try {
+            update()
+        } catch (error: Exception) {
+            val message = "Invalid $property JSON: ${error.message ?: error::class.simpleName}"
+            if (errorCallback == null) pendingBridgeError = message else emitBridgeError(message)
+        }
+    }
+
+    private fun emitBridgeError(message: String) {
+        errorCallback?.invoke(mapOf("code" to "INVALID_ARGUMENT", "message" to message))
+    }
+
+    private fun resetConfiguredComponents() {
+        configuredPaneIds.clear()
+        configuredPaneIds += listOf("price", "volume")
+        configuredIndicatorIds.clear()
+        configuredIndicatorIds += listOf("ma-price", "ma-price-10", "vol")
+    }
+
+    private fun parseBars(json: String): List<KLineBar> {
+        val values = JSONArray(json)
+        return List(values.length()) { index ->
+            val item = values.getJSONObject(index)
+            KLineBar(
+                timestamp = item.getLong("timestamp"), open = item.getDouble("open"),
+                high = item.getDouble("high"), low = item.getDouble("low"), close = item.getDouble("close"),
+                volume = item.optDouble("volume", 0.0), turnover = item.optDouble("turnover", 0.0),
+            )
+        }
+    }
+
+    private fun parseSignals(json: String): List<KLineSignal> {
+        val values = JSONArray(json)
+        return List(values.length()) { index ->
+            val item = values.getJSONObject(index)
+            KLineSignal(
+                id = item.getString("id"), timestamp = item.getLong("timestamp"), value = item.getDouble("value"),
+                type = KLineSignalType.valueOf(item.optString("type", "INFO").uppercase()),
+                title = item.getString("title"), summary = item.getString("summary"),
+                confidence = if (item.has("confidence")) item.getDouble("confidence") else null,
+            )
+        }
     }
 
     private fun periodUnit(value: String): KLinePeriodUnit = when (value.lowercase()) {

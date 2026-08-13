@@ -2,6 +2,7 @@ package com.tencent.kuiklybase.kline.demo.shared
 
 import com.tencent.kuiklybase.kline.KLineChartEngine
 import com.tencent.kuiklybase.kline.KLinePointerEvent
+import com.tencent.kuiklybase.kline.KLinePointerDispatchOutcome
 import com.tencent.kuiklybase.kline.config.KLineTheme
 import com.tencent.kuiklybase.kline.controller.KLineChartController
 import com.tencent.kuiklybase.kline.data.KLineDataSource
@@ -102,9 +103,7 @@ class KLineChartView(
         KLineCanvasRenderer.render(plan, canvas)
     }
 
-    fun onPointerEvent(event: KLinePointerEvent) {
-        engine.dispatchPointerEvent(event)
-    }
+    fun onPointerEvent(event: KLinePointerEvent): KLinePointerDispatchOutcome = engine.dispatchPointerEvent(event)
 
     fun dispose() {
         scope.cancel()

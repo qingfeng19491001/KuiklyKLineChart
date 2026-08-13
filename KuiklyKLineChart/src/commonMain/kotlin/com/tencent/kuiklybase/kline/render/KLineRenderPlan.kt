@@ -7,6 +7,7 @@ import com.tencent.kuiklybase.kline.indicator.KLineIndicatorFigureType
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayFigureStyle
 import com.tencent.kuiklybase.kline.pane.KLinePaneKind
+import com.tencent.kuiklybase.kline.KLineChartMode
 
 data class KLineVisibleRange(val startInclusive: Int, val endExclusive: Int) {
     init { require(startInclusive >= 0 && endExclusive >= startInclusive) }
@@ -38,6 +39,22 @@ sealed interface KLineOverlayRenderFigure {
 data class KLineCrosshairRenderData(val paneId: String, val point: KLinePoint, val xLabel: String, val yLabel: String)
 class KLineTooltipRenderData(val bounds: KLineRect, lines: List<String>) { val lines: List<String> = frozenList(lines) }
 
+data class KLineRenderFeatures(
+    val axisLabels: Boolean,
+    val interaction: Boolean,
+    val crosshair: Boolean,
+    val tooltip: Boolean,
+) {
+    companion object {
+        internal fun from(mode: KLineChartMode) = KLineRenderFeatures(
+            mode.axisLabels,
+            mode.interaction,
+            mode.crosshair,
+            mode.tooltip,
+        )
+    }
+}
+
 class KLineRenderPlan internal constructor(
     val bounds: KLineRect,
     val visibleRange: KLineVisibleRange,
@@ -50,6 +67,7 @@ class KLineRenderPlan internal constructor(
     val theme: KLineTheme,
     val formatters: KLineFormatters,
     val barSpace: Double,
+    val features: KLineRenderFeatures = KLineRenderFeatures.from(KLineChartMode.FULL),
 ) {
     val bars: List<KLineRenderBar> = frozenList(bars)
     val panes: List<KLineRenderPane> = frozenList(panes)

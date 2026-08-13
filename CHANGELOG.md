@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- FULL/COMPACT shared-engine presets, semantic AI signals, Kuikly JSON bars/signals props and signal-click event.
+- Kuikly Router showcases for full charts, compact cards and signal-overlay interpretation.
+
 - Core rendering engine: immutable `PersistentKLineBarList` with O(log N) prepend, append, replaceRange and timestamp-based binary search.
 - State center: `KLineStore` with per-subsystem revision counters and observer hooks.
 - Controller API: long-lived `KLineChartController` with command pipe (pan/zoom/switch-panes/add-indicator/add-overlay/export-state).

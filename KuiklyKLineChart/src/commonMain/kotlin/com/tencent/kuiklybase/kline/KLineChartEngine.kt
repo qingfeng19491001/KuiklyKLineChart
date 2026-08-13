@@ -11,6 +11,8 @@ import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import com.tencent.kuiklybase.kline.render.KLineRenderPlan
 import com.tencent.kuiklybase.kline.render.KLineRenderPlanner
+import com.tencent.kuiklybase.kline.signal.KLineSignal
+import com.tencent.kuiklybase.kline.signal.KLineSignalSet
 import com.tencent.kuiklybase.kline.store.KLineStore
 import com.tencent.kuiklybase.kline.store.KLineStoreSnapshot
 import com.tencent.kuiklybase.kline.viewport.KLineViewportConfig
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class KLineChartEngine(
@@ -43,6 +46,9 @@ class KLineChartEngine(
 
     private val _errorFlow = MutableStateFlow<KLineError?>(null)
     val errorFlow: StateFlow<KLineError?> = _errorFlow.asStateFlow()
+
+    private val modeFlow = MutableStateFlow(KLineChartMode.FULL)
+    private val signalsFlow = MutableStateFlow(KLineSignalSet.EMPTY)
 
     private var currentBounds: KLineRect? = null
 
@@ -66,30 +72,47 @@ class KLineChartEngine(
     }
 
     fun renderPlanFlow(bounds: KLineRect, overscanBars: Int = 1): Flow<KLineRenderPlan> =
-        snapshotFlow.map { snap -> planner.create(snap, bounds, overscanBars) }
+        combine(snapshotFlow, modeFlow, signalsFlow) { snap, mode, signals ->
+            planner.create(snap, bounds, overscanBars, mode, signals.toOverlayInstances())
+        }
 
     fun latestRenderPlan(bounds: KLineRect, overscanBars: Int = 1): KLineRenderPlan =
-        planner.create(snapshotFlow.value, bounds, overscanBars)
+        planner.create(store.snapshot, bounds, overscanBars, modeFlow.value, signalsFlow.value.toOverlayInstances())
+
+    fun setMode(mode: KLineChartMode) {
+        modeFlow.value = mode
+    }
+
+    fun setSignals(signals: List<KLineSignal>) {
+        signalsFlow.value = KLineSignalSet(signals)
+    }
 
     fun updateBounds(bounds: KLineRect) {
         currentBounds = bounds
         runtime.updatePlotRect(bounds)
     }
 
-    fun dispatchPointerEvent(event: KLinePointerEvent) {
+    fun dispatchPointerEvent(event: KLinePointerEvent): KLinePointerDispatchOutcome {
+        if (!modeFlow.value.interaction) return KLinePointerDispatchOutcome.Ignored
         val snap = store.snapshot
-        val bounds = currentBounds ?: return
-        val viewport = snap.viewport ?: return
+        val bounds = currentBounds ?: return KLinePointerDispatchOutcome.Ignored
+        val viewport = snap.viewport ?: return KLinePointerDispatchOutcome.Ignored
         val bars = snap.bars
-        if (bars.isEmpty()) return
+        if (bars.isEmpty()) return KLinePointerDispatchOutcome.Ignored
         val xCoord = com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem(bounds, viewport, bars)
         val paneLayouts = com.tencent.kuiklybase.kline.pane.KLinePaneLayoutEngine.layout(snap.panes, bounds)
         val hoveredLayout = paneLayouts.firstOrNull { layout ->
             layout.visible && event.y in layout.rect.top..layout.rect.bottom
-        } ?: return
-        val pane = snap.panes.firstOrNull { it.id == hoveredLayout.paneId } ?: return
+        } ?: return KLinePointerDispatchOutcome.Ignored
+        val pane = snap.panes.firstOrNull { it.id == hoveredLayout.paneId } ?: return KLinePointerDispatchOutcome.Ignored
         val yAxis = pane.yAxes.first()
         val yCoord = com.tencent.kuiklybase.kline.axis.KLineYCoordinateSystem(hoveredLayout.rect, yAxis)
+        if (event is KLinePointerEvent.Tap) {
+            val signal = signalsFlow.value.hitTest(
+                signalsFlow.value.toOverlayInstances(), pane.id, event.x, event.y, xCoord, yCoord,
+            )
+            if (signal != null) return KLinePointerDispatchOutcome.SignalClick(signal)
+        }
         var overlayHit: com.tencent.kuiklybase.kline.interaction.KLineOverlayHit? = null
         for (instance in snap.overlayInstances) {
             val hit = com.tencent.kuiklybase.kline.interaction.KLineOverlayHitTester.hitTest(
@@ -166,6 +189,7 @@ class KLineChartEngine(
                 engine.cancelInteraction()
             }
         }
+        return KLinePointerDispatchOutcome.Handled
     }
 
     fun triggerLoadBefore() { dataSession.loadBefore() }
@@ -179,6 +203,12 @@ class KLineChartEngine(
         runtime.dispose()
         scope.cancel()
     }
+}
+
+sealed interface KLinePointerDispatchOutcome {
+    data object Handled : KLinePointerDispatchOutcome
+    data object Ignored : KLinePointerDispatchOutcome
+    data class SignalClick(val signal: KLineSignal) : KLinePointerDispatchOutcome
 }
 
 sealed interface KLinePointerEvent {

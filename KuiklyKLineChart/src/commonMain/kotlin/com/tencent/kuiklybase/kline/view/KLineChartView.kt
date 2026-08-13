@@ -189,6 +189,24 @@ public class KLineChartAttr : Attr() {
         return this
     }
 
+    /** Selects the shared engine preset: `full` or `compact`. */
+    public fun mode(name: String): KLineChartAttr {
+        "mode" with name
+        return this
+    }
+
+    /** Replaces the static/pushed candle snapshot encoded as a JSON array. */
+    public fun bars(json: String): KLineChartAttr {
+        "bars" with json
+        return this
+    }
+
+    /** Replaces semantic AI signals encoded as a JSON array. */
+    public fun signals(json: String): KLineChartAttr {
+        "signals" with json
+        return this
+    }
+
     /**
      * 设置窗格与指标配置（JSON 字符串）。
      *
@@ -217,6 +235,13 @@ public class KLineChartAttr : Attr() {
  */
 public class KLineChartEvent : Event() {
 
+    public fun onSignalClick(handler: (id: String, title: String, summary: String) -> Unit) {
+        register(EVENT_SIGNAL_CLICK) { params ->
+            val json = params as? JSONObject ?: JSONObject()
+            handler(json.optString("id"), json.optString("title"), json.optString("summary"))
+        }
+    }
+
     /**
      * 注册错误回调。当数据加载失败、渲染异常等场景触发。
      */
@@ -244,6 +269,7 @@ public class KLineChartEvent : Event() {
     public companion object {
         public const val EVENT_ERROR: String = "onError"
         public const val EVENT_CROSSHAIR_CHANGE: String = "onCrosshairChange"
+        public const val EVENT_SIGNAL_CLICK: String = "onSignalClick"
     }
 }
 

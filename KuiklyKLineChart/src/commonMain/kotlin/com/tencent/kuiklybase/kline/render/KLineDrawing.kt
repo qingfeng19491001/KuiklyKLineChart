@@ -89,9 +89,10 @@ internal data class AxisTick(val value: Double, val y: Double, val text: String)
 class KLineAxisRenderer(private val caches: KLineRenderCaches = KLineRenderCaches(), private val measurer: KLineTextMeasurer = KLineApproximateTextMeasurer) : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         plan.panes.forEach { pane ->
+            sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.AXIS, KLinePoint(pane.rect.right, pane.rect.top), KLinePoint(pane.rect.right, pane.rect.bottom), KLineStroke(plan.theme.axis.lineColor, 1.0)))
+            if (!plan.features.axisLabels) return@forEach
             val key = AxisTickKey(pane.axis.minValue, pane.axis.maxValue, pane.rect.top, pane.rect.bottom, plan.formatters.hashCode())
             val ticks = caches.ticks[key]?.also { caches.tickHits++ } ?: buildTicks(plan, pane).also { caches.ticks[key] = it; caches.tickMisses++ }
-            sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.AXIS, KLinePoint(pane.rect.right, pane.rect.top), KLinePoint(pane.rect.right, pane.rect.bottom), KLineStroke(plan.theme.axis.lineColor, 1.0)))
             var previousBottom = Double.NEGATIVE_INFINITY
             ticks.forEach { tick ->
                 val textKey = tick.text to plan.theme.axis.textSize
@@ -111,13 +112,13 @@ class KLineAxisRenderer(private val caches: KLineRenderCaches = KLineRenderCache
 }
 
 class KLineCrosshairRenderer : KLineRenderer {
-    override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) { val data = plan.crosshair ?: return; val pane = plan.panes.firstOrNull { it.id == data.paneId } ?: return; val stroke = KLineStroke(plan.theme.crosshair.lineColor, plan.theme.crosshair.lineWidth)
+    override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) { if (!plan.features.crosshair) return; val data = plan.crosshair ?: return; val pane = plan.panes.firstOrNull { it.id == data.paneId } ?: return; val stroke = KLineStroke(plan.theme.crosshair.lineColor, plan.theme.crosshair.lineWidth)
         sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.CROSSHAIR, KLinePoint(pane.rect.left, data.point.y), KLinePoint(pane.rect.right, data.point.y), stroke)); sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.CROSSHAIR, KLinePoint(data.point.x, pane.rect.top), KLinePoint(data.point.x, pane.rect.bottom), stroke))
     }
 }
 
 class KLineTooltipRenderer : KLineRenderer {
-    override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) { val tooltip = plan.tooltip ?: return; sink.draw(KLineDrawingPrimitive.Rect(KLineRenderLayer.TOOLTIP, tooltip.bounds, plan.theme.tooltip.backgroundColor, cornerRadius = plan.theme.tooltip.cornerRadius)); val lineHeight = plan.theme.tooltip.textSize + 2.0; tooltip.lines.forEachIndexed { index, line -> val top = tooltip.bounds.top + plan.theme.tooltip.padding + index * lineHeight; if (top + plan.theme.tooltip.textSize <= tooltip.bounds.bottom) sink.draw(KLineDrawingPrimitive.Text(KLineRenderLayer.TOOLTIP, line, KLineRect(tooltip.bounds.left + plan.theme.tooltip.padding, top, tooltip.bounds.right - plan.theme.tooltip.padding, top + plan.theme.tooltip.textSize), if (index == 0) plan.theme.tooltip.titleColor else plan.theme.tooltip.textColor, plan.theme.tooltip.textSize)) } }
+    override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) { if (!plan.features.tooltip) return; val tooltip = plan.tooltip ?: return; sink.draw(KLineDrawingPrimitive.Rect(KLineRenderLayer.TOOLTIP, tooltip.bounds, plan.theme.tooltip.backgroundColor, cornerRadius = plan.theme.tooltip.cornerRadius)); val lineHeight = plan.theme.tooltip.textSize + 2.0; tooltip.lines.forEachIndexed { index, line -> val top = tooltip.bounds.top + plan.theme.tooltip.padding + index * lineHeight; if (top + plan.theme.tooltip.textSize <= tooltip.bounds.bottom) sink.draw(KLineDrawingPrimitive.Text(KLineRenderLayer.TOOLTIP, line, KLineRect(tooltip.bounds.left + plan.theme.tooltip.padding, top, tooltip.bounds.right - plan.theme.tooltip.padding, top + plan.theme.tooltip.textSize), if (index == 0) plan.theme.tooltip.titleColor else plan.theme.tooltip.textColor, plan.theme.tooltip.textSize)) } }
 }
 
 class KLineRenderPipeline(

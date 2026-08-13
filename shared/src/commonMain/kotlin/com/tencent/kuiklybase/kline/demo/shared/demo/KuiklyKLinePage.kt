@@ -1,132 +1,115 @@
 package com.tencent.kuiklybase.kline.demo.shared.demo
 
 import com.tencent.kuikly.core.annotations.Page
-import com.tencent.kuikly.core.base.Border
-import com.tencent.kuikly.core.base.BorderStyle
 import com.tencent.kuikly.core.base.Color
 import com.tencent.kuikly.core.base.ViewBuilder
-import com.tencent.kuikly.core.base.ViewRef
+import com.tencent.kuikly.core.module.RouterModule
 import com.tencent.kuikly.core.pager.Pager
 import com.tencent.kuikly.core.reactive.handler.observable
 import com.tencent.kuikly.core.views.Text
 import com.tencent.kuikly.core.views.View
 import com.tencent.kuikly.core.views.compose.Button
+import com.tencent.kuiklybase.kline.data.KLineBar
 import com.tencent.kuiklybase.kline.view.KLineChart
-import com.tencent.kuiklybase.kline.view.KLineChartView
+
+private val showcaseBars = RandomBarGenerator.defaultSymbolBars(count = 120)
+private val showcaseBarsJson = encodeBars(showcaseBars)
 
 @Page("KuiklyKLineDemo")
 internal class KuiklyKLinePage : Pager() {
-    private lateinit var chartRef: ViewRef<KLineChartView>
-    private var darkTheme by observable(false)
-    private var status by observable("Long press the chart to inspect a candle")
+    override fun body(): ViewBuilder {
+        val ctx = this
+        return {
+            attr { flex(1f); paddingTop(ctx.pageData.safeAreaInsets.top); backgroundColor(Color(0xFFF6F7F9)) }
+            Text { attr { text("KuiklyKLineChart Showcases"); fontSize(20f); fontWeight600(); margin(20f); color(Color(0xFF111827)) } }
+            ctx.entry("FullChartDemo", "Full chart", "Indicators, axes and viewport interaction").invoke(this)
+            ctx.entry("CompactChartDemo", "Compact chart", "Lightweight AI reply card preset").invoke(this)
+            ctx.entry("SignalOverlayDemo", "Signal overlay", "AI signal hit and interpretation card").invoke(this)
+        }
+    }
+
+    private fun entry(page: String, title: String, subtitle: String): ViewBuilder = {
+        Button {
+            attr {
+                height(72f); marginLeft(16f); marginRight(16f); marginBottom(12f); borderRadius(10f)
+                backgroundColor(Color.WHITE)
+                titleAttr { text("$title\n$subtitle"); fontSize(15f); color(Color(0xFF111827)) }
+            }
+            event { click { this@KuiklyKLinePage.acquireModule<RouterModule>(RouterModule.MODULE_NAME).openPage(page) } }
+        }
+    }
+}
+
+internal abstract class ShowcasePage : Pager() {
+    protected abstract val pageTitle: String
+    protected abstract fun content(): ViewBuilder
 
     override fun body(): ViewBuilder {
         val ctx = this
         return {
-            attr {
-                flex(1f)
-                paddingTop(ctx.pageData.safeAreaInsets.top)
-                paddingBottom(ctx.pageData.safeAreaInsets.bottom)
-                backgroundColor(if (ctx.darkTheme) Color(0xFF101318) else Color.WHITE)
-            }
-
+            attr { flex(1f); paddingTop(ctx.pageData.safeAreaInsets.top); backgroundColor(Color.WHITE) }
             View {
-                attr {
-                    height(52f)
-                    paddingLeft(16f)
-                    paddingRight(16f)
-                    flexDirectionRow()
-                    alignItemsCenter()
-                    justifyContentSpaceBetween()
-                }
+                attr { height(48f); flexDirectionRow(); alignItemsCenter(); backgroundColor(Color.WHITE) }
                 Text {
-                    attr {
-                        text("Kuikly K-Line")
-                        fontSize(18f)
-                        fontWeight600()
-                        color(if (ctx.darkTheme) Color.WHITE else Color(0xFF111827))
-                    }
+                    attr { text("←"); fontSize(24f); width(48f); textAlignCenter(); color(Color(0xFF111827)) }
+                    event { click { ctx.acquireModule<RouterModule>(RouterModule.MODULE_NAME).closePage() } }
                 }
-                Text {
-                    attr {
-                        text("00700 · 1D")
-                        fontSize(13f)
-                        color(if (ctx.darkTheme) Color(0xFFA8AFBA) else Color(0xFF596273))
-                    }
-                }
+                Text { attr { text(ctx.pageTitle); fontSize(17f); fontWeight600(); color(Color(0xFF111827)) } }
             }
+            ctx.content().invoke(this)
+        }
+    }
+}
 
+@Page("FullChartDemo")
+internal class FullChartDemo : ShowcasePage() {
+    override val pageTitle = "Full chart"
+    override fun content(): ViewBuilder = {
+        KLineChart {
+            attr {
+                flex(1f); symbol("00700", "Tencent Holdings"); period(1, "day")
+                mode("full"); bars(showcaseBarsJson)
+            }
+        }
+    }
+}
+
+@Page("CompactChartDemo")
+internal class CompactChartDemo : ShowcasePage() {
+    override val pageTitle = "Compact chart card"
+    override fun content(): ViewBuilder = {
+        View {
+            attr { margin(16f); height(210f); borderRadius(12f); backgroundColor(Color(0xFFF8FAFC)); padding(12f) }
+            Text { attr { text("00700  Tencent Holdings"); fontSize(15f); fontWeight600(); color(Color(0xFF111827)); height(28f) } }
+            KLineChart { attr { flex(1f); symbol("00700"); period(1, "day"); mode("compact"); bars(showcaseBarsJson) } }
+        }
+    }
+}
+
+@Page("SignalOverlayDemo")
+internal class SignalOverlayDemo : ShowcasePage() {
+    override val pageTitle = "AI signal overlay"
+    private var selectedTitle by observable("Tap the BUY signal")
+    private var selectedSummary by observable("The interpretation card belongs to the business demo, not the chart component.")
+    private val signalBar = showcaseBars[90]
+    private val signalsJson = """[{"id":"buy-1","timestamp":${signalBar.timestamp},"value":${signalBar.low},"type":"BUY","title":"BUY","summary":"Momentum improved near this candle.","confidence":0.82}]"""
+
+    override fun content(): ViewBuilder {
+        val ctx = this
+        return {
             KLineChart {
-                ref { ctx.chartRef = it }
-                attr {
-                    flex(1f)
-                    symbol("00700", "Tencent Holdings")
-                    period(1, "day")
-                    theme(if (ctx.darkTheme) "dark" else "light")
-                }
-                event {
-                    onError { code, message -> ctx.status = "$code: $message" }
-                    onCrosshairChange { timestamp, price ->
-                        ctx.status = if (timestamp == null || price == null) {
-                            "Long press the chart to inspect a candle"
-                        } else {
-                            "$timestamp  ·  ${price.toString()}"
-                        }
-                    }
-                }
+                attr { height(360f); symbol("00700"); period(1, "day"); mode("full"); bars(showcaseBarsJson); signals(ctx.signalsJson) }
+                event { onSignalClick { _, title, summary -> ctx.selectedTitle = title; ctx.selectedSummary = summary } }
             }
-
-            Text {
-                attr {
-                    text(ctx.status)
-                    fontSize(12f)
-                    color(if (ctx.darkTheme) Color(0xFFA8AFBA) else Color(0xFF596273))
-                    marginLeft(16f)
-                    marginRight(16f)
-                    marginTop(8f)
-                    marginBottom(8f)
-                }
-            }
-
             View {
-                attr {
-                    height(52f)
-                    paddingLeft(12f)
-                    paddingRight(12f)
-                    flexDirectionRow()
-                    alignItemsCenter()
-                }
-                ctx.actionButton("Reset", ctx.darkTheme) { ctx.chartRef.view?.resetViewport() }.invoke(this)
-                ctx.actionButton(if (ctx.darkTheme) "Light" else "Dark", ctx.darkTheme) {
-                    ctx.darkTheme = !ctx.darkTheme
-                }.invoke(this)
-                ctx.actionButton("Latest", ctx.darkTheme) { ctx.chartRef.view?.scrollToLatest() }.invoke(this)
+                attr { margin(16f); padding(14f); borderRadius(10f); backgroundColor(Color(0xFFF0FDF4)) }
+                Text { attr { text(ctx.selectedTitle); fontSize(16f); fontWeight600(); color(Color(0xFF166534)); marginBottom(6f) } }
+                Text { attr { text(ctx.selectedSummary); fontSize(13f); color(Color(0xFF374151)) } }
             }
         }
     }
+}
 
-    private fun actionButton(
-        title: String,
-        darkTheme: Boolean,
-        action: () -> Unit,
-    ): ViewBuilder = {
-        Button {
-            attr {
-                flex(1f)
-                height(36f)
-                marginLeft(4f)
-                marginRight(4f)
-                borderRadius(4f)
-                backgroundColor(if (darkTheme) Color(0xFF252B34) else Color.WHITE)
-                border(Border(1f, BorderStyle.SOLID, if (darkTheme) Color(0xFF3A414D) else Color(0xFFD6DAE1)))
-                titleAttr {
-                    text(title)
-                    fontSize(13f)
-                    color(if (darkTheme) Color.WHITE else Color(0xFF111827))
-                }
-                highlightBackgroundColor(if (darkTheme) Color(0xFF343B46) else Color(0xFFE8EBF0))
-            }
-            event { click { action() } }
-        }
-    }
+private fun encodeBars(bars: List<KLineBar>): String = bars.joinToString(prefix = "[", postfix = "]") { bar ->
+    """{"timestamp":${bar.timestamp},"open":${bar.open},"high":${bar.high},"low":${bar.low},"close":${bar.close},"volume":${bar.volume},"turnover":${bar.turnover}}"""
 }
