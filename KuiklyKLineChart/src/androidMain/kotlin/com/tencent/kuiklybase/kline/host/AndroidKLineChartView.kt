@@ -54,6 +54,9 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     private var paneLayoutCallback: KuiklyRenderCallback? = null
     private var paneHeaderClickCallback: KuiklyRenderCallback? = null
     private var pressedPaneHeaderId: String? = null
+    private var paneHeaderGestureBecamePan = false
+    private var paneHeaderDownX = 0f
+    private var paneHeaderDownY = 0f
     private var lastPaneHeaderTops: List<Float> = emptyList()
     private val snapshotCallbacks = mutableMapOf<String, KuiklyRenderCallback>()
     private var previousSnapshot: com.tencent.kuiklybase.kline.store.KLineStoreSnapshot? = null
@@ -67,7 +70,9 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     private var configuredSignals: List<KLineSignal> = emptyList()
     private var configuredConfig: String? = null
     private var pendingBridgeError: String? = null
-    private var innerView = createInnerView(StaticKLineDataSource(emptyList()))
+    private var currentDataSource: KLineDataSource = StaticKLineDataSource(emptyList())
+    private var detachedState: KLineChartState? = null
+    private var innerView = createInnerView(currentDataSource)
 
     private fun createInnerView(dataSource: KLineDataSource) = KLineChartHostView(
         dataSource = dataSource,
@@ -116,6 +121,11 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
             return true
         }
 
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            dispatch(KLinePointerEvent.Tap(e.x.toDouble(), e.y.toDouble()))
+            return true
+        }
+
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
             if (scaleDetector.isInProgress) return true
             dispatch(KLinePointerEvent.Move(e2.x.toDouble(), e2.y.toDouble(), pointerCount = e2.pointerCount))
@@ -159,7 +169,15 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
         controller.setMarket(symbol, period)
     }
 
-    override fun setProp(propKey: String, propValue: Any): Boolean = when (propKey) {
+    override fun setProp(propKey: String, propValue: Any): Boolean = try {
+        setKLineProp(propKey, propValue)
+    } catch (error: Exception) {
+        val message = "Invalid $propKey property: ${error.message ?: error::class.simpleName}"
+        if (errorCallback == null) pendingBridgeError = message else emitBridgeError(message)
+        true
+    }
+
+    private fun setKLineProp(propKey: String, propValue: Any): Boolean = when (propKey) {
         "bindingId" -> {
             KLineChartBindingRegistry.take(propValue as String)?.let { binding ->
                 replaceDataSource(binding.dataSource, binding.controller)
@@ -249,7 +267,16 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     }
 
     override fun call(method: String, params: String?, callback: KuiklyRenderCallback?): Any? {
-        when (method) {
+        val supported = setOf(
+            "scrollToLatest", "zoom", "scrollToTimestamp", "scrollByBars", "zoomAtTimestamp",
+            "loadBefore", "loadAfter", "retryInitialLoad", "resetViewport", "beginOverlay",
+            "cancelInteraction", "clearCrosshair", "deleteSelectedOverlay", "setPane", "removePane",
+            "movePane", "setPaneState", "addIndicator", "updateIndicator", "removeIndicator",
+            "createOverlay", "updateOverlay", "removeOverlay", "exportState", "restoreState",
+        )
+        if (method !in supported) return super.call(method, params, callback)
+        try {
+            when (method) {
             "scrollToLatest" -> controller.scrollToLatest()
             "zoom" -> controller.zoom(JSONObject(params.orEmpty()).optDouble("factor", 1.0))
             "scrollToTimestamp" -> controller.scrollToTimestamp(JSONObject(params.orEmpty()).optLong("timestamp"))
@@ -289,9 +316,14 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
             "removeOverlay" -> controller.removeOverlay(JSONObject(params.orEmpty()).getString("id"))
             "exportState" -> callback?.invoke(stateToMap(controller.exportState()))
             "restoreState" -> controller.restoreState(parseState(JSONObject(params.orEmpty())))
-            else -> return super.call(method, params, callback)
+                else -> Unit
+            }
+            postInvalidateOnAnimation()
+        } catch (error: Exception) {
+            val message = "Invalid $method arguments: ${error.message ?: error::class.simpleName}"
+            emitBridgeError(message)
+            callback?.invoke(mapOf("error" to message))
         }
-        postInvalidateOnAnimation()
         return null
     }
 
@@ -322,13 +354,32 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (paneHeaderGestureBecamePan) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> dispatch(KLinePointerEvent.Move(event.x.toDouble(), event.y.toDouble()))
+                MotionEvent.ACTION_UP -> { dispatch(KLinePointerEvent.Up(event.x.toDouble(), event.y.toDouble())); paneHeaderGestureBecamePan = false }
+                MotionEvent.ACTION_CANCEL -> { dispatch(KLinePointerEvent.Cancel(event.x.toDouble(), event.y.toDouble())); paneHeaderGestureBecamePan = false }
+            }
+            return true
+        }
         val headerId = paneHeaderAt(event.x, event.y)
-        if (event.actionMasked == MotionEvent.ACTION_DOWN && headerId != null) {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && headerId != null && paneHeaderClickCallback != null) {
             pressedPaneHeaderId = headerId
+            paneHeaderDownX = event.x
+            paneHeaderDownY = event.y
             return true
         }
         pressedPaneHeaderId?.let { pressedId ->
             when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> if (
+                    kotlin.math.abs(event.x - paneHeaderDownX) > 12f * density ||
+                    kotlin.math.abs(event.y - paneHeaderDownY) > 12f * density
+                ) {
+                    pressedPaneHeaderId = null
+                    paneHeaderGestureBecamePan = true
+                    dispatch(KLinePointerEvent.Down(paneHeaderDownX.toDouble(), paneHeaderDownY.toDouble()))
+                    dispatch(KLinePointerEvent.Move(event.x.toDouble(), event.y.toDouble()))
+                }
                 MotionEvent.ACTION_UP -> {
                     if (headerId == pressedId) {
                         paneHeaderClickCallback?.invoke(mapOf("paneId" to pressedId))
@@ -353,7 +404,6 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
                 }
             }
             MotionEvent.ACTION_UP -> {
-                if (!touchMoved && !scaleDetector.isInProgress) dispatch(KLinePointerEvent.Tap(event.x.toDouble(), event.y.toDouble()))
                 dispatch(KLinePointerEvent.Up(event.x.toDouble(), event.y.toDouble()))
             }
             MotionEvent.ACTION_CANCEL -> dispatch(KLinePointerEvent.Cancel(event.x.toDouble(), event.y.toDouble()))
@@ -362,14 +412,22 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     }
 
     override fun onDetachedFromWindow() {
+        detachedState = runCatching { controller.exportState() }.getOrNull()
         innerView.dispose()
-        errorCallback = null
-        crosshairCallback = null
-        signalClickCallback = null
-        paneLayoutCallback = null
-        paneHeaderClickCallback = null
-        snapshotCallbacks.clear()
         super.onDetachedFromWindow()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (detachedState != null) {
+            innerView = createInnerView(currentDataSource)
+            if (width > 0 && height > 0) innerView.onSizeChanged(width, height)
+            controller.setMarket(symbol, period)
+            controller.setTheme(configuredTheme)
+            configuredConfig?.let { applyConfig(JSONObject(it)) }
+            detachedState?.let(controller::restoreState)
+            detachedState = null
+        }
     }
 
     private fun dispatch(event: KLinePointerEvent) {
@@ -390,12 +448,18 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     }
 
     private fun replaceBars(bars: List<KLineBar>) {
-        replaceDataSource(StaticKLineDataSource(bars), KLineChartController())
+        replaceDataSource(StaticKLineDataSource(bars), controller, preserveState = true)
     }
 
-    private fun replaceDataSource(dataSource: KLineDataSource, newController: KLineChartController) {
+    private fun replaceDataSource(
+        dataSource: KLineDataSource,
+        newController: KLineChartController,
+        preserveState: Boolean = false,
+    ) {
+        val state = if (preserveState) runCatching { controller.exportState() }.getOrNull() else null
         innerView.dispose()
         controller = newController
+        currentDataSource = dataSource
         previousSnapshot = null
         resetConfiguredComponents()
         innerView = createInnerView(dataSource)
@@ -403,6 +467,7 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
         controller.setMarket(symbol, period)
         controller.setTheme(configuredTheme)
         configuredConfig?.let { applyConfig(JSONObject(it)) }
+        state?.let(controller::restoreState)
         postInvalidateOnAnimation()
     }
 

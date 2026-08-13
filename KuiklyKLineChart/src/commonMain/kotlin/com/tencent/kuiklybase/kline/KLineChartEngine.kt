@@ -54,15 +54,15 @@ class KLineChartEngine(
     private var currentBounds: KLineRect? = null
 
     private val errorSubscription = store.observeErrors { error ->
-            scope.launch { _errorFlow.emit(error) }
-        }
+        _errorFlow.value = error
+    }
     private val storeSubscription: com.tencent.kuiklybase.kline.store.KLineStoreSubscription
     private val controllerTarget: KLineChartControllerTarget
 
     init {
         runtime = KLineChartRuntime(store, dataSession, viewportConfig)
         storeSubscription = store.observe { _, current ->
-            scope.launch { _snapshotFlow.emit(current) }
+            _snapshotFlow.value = current
         }
         controllerTarget = object : KLineChartControllerTarget {
             override fun execute(command: com.tencent.kuiklybase.kline.controller.KLineControllerCommand) =

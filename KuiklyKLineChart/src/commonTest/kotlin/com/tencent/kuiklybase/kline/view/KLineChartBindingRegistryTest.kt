@@ -7,8 +7,24 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.test.assertEquals
 
 class KLineChartBindingRegistryTest {
+    @Test
+    fun androidMapCallbacksDecodeLikeJsonCallbacks() {
+        val json = bridgeJson(
+            mapOf(
+                "id" to "overlay-1",
+                "period" to mapOf("value" to 1, "unit" to "day"),
+                "points" to listOf(mapOf("timestamp" to 10L, "value" to 20.0)),
+            ),
+        )
+
+        assertEquals("overlay-1", json.optString("id"))
+        assertEquals("day", json.optJSONObject("period")?.optString("unit"))
+        assertTrue(json.toString().contains("timestamp"))
+    }
+
     @Test
     fun bindingCanBeConsumedExactlyOnce() {
         val source = StaticKLineDataSource(emptyList())

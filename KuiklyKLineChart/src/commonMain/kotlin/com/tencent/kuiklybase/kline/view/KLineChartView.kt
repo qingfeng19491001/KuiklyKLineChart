@@ -120,7 +120,7 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
 
     /** Creates an overlay and returns its generated id asynchronously. */
     public fun createOverlay(json: String, callback: (String) -> Unit) = callJson(METHOD_CREATE_OVERLAY, json) { result ->
-        callback((result as? JSONObject)?.optString("id").orEmpty())
+        callback(bridgeJson(result).optString("id"))
     }
 
     public fun updateOverlay(instanceId: String, json: String) {
@@ -132,7 +132,7 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
 
     /** Exports a JSON snapshot suitable for [restoreState]. */
     public fun exportState(callback: (String) -> Unit) = callJson(METHOD_EXPORT_STATE, null) { result ->
-        callback((result as? JSONObject)?.toString().orEmpty())
+        callback(bridgeJson(result).toString())
     }
 
     public fun restoreState(json: String) = callJson(METHOD_RESTORE_STATE, json)
@@ -355,12 +355,12 @@ public class KLineChartEvent : Event() {
     }
 
     private fun registerJson(name: String, handler: (JSONObject) -> Unit) {
-        register(name) { params -> handler(params as? JSONObject ?: JSONObject()) }
+        register(name) { params -> handler(bridgeJson(params)) }
     }
 
     public fun onSignalClick(handler: (id: String, title: String, summary: String) -> Unit) {
         register(EVENT_SIGNAL_CLICK) { params ->
-            val json = params as? JSONObject ?: JSONObject()
+            val json = bridgeJson(params)
             handler(json.optString("id"), json.optString("title"), json.optString("summary"))
         }
     }
@@ -370,7 +370,7 @@ public class KLineChartEvent : Event() {
      */
     public fun onError(handler: (code: String, message: String) -> Unit) {
         register(EVENT_ERROR) { params ->
-            val json = params as? JSONObject ?: JSONObject()
+            val json = bridgeJson(params)
             handler(json.optString("code"), json.optString("message"))
         }
     }
@@ -382,7 +382,7 @@ public class KLineChartEvent : Event() {
      */
     public fun onCrosshairChange(handler: (timestamp: Long?, price: Double?) -> Unit) {
         register(EVENT_CROSSHAIR_CHANGE) { params ->
-            val json = params as? JSONObject ?: JSONObject()
+            val json = bridgeJson(params)
             val ts = if (json.has("timestamp")) json.optLong("timestamp") else null
             val price = if (json.has("price")) json.optDouble("price") else null
             handler(ts, price)
@@ -410,6 +410,25 @@ public class KLineChartEvent : Event() {
  */
 public fun ViewContainer<*, *>.KLineChart(init: KLineChartView.() -> Unit) {
     addChild(KLineChartView(), init)
+}
+
+internal fun bridgeJson(value: Any?): JSONObject = when (value) {
+    is JSONObject -> value
+    is Map<*, *> -> JSONObject(bridgeJsonString(value))
+    else -> JSONObject()
+}
+
+private fun bridgeJsonString(value: Any?): String = when (value) {
+    null -> "null"
+    is String -> "\"${value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")}\""
+    is Number, is Boolean -> value.toString()
+    is Map<*, *> -> value.entries
+        .filter { it.key is String }
+        .joinToString(prefix = "{", postfix = "}") { (key, item) ->
+            "${bridgeJsonString(key as String)}:${bridgeJsonString(item)}"
+        }
+    is Iterable<*> -> value.joinToString(prefix = "[", postfix = "]") { bridgeJsonString(it) }
+    else -> bridgeJsonString(value.toString())
 }
 
 public fun ViewContainer<*, *>.KLineChart(
