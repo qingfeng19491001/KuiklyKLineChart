@@ -21,11 +21,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.tencent.kuiklybase.kline.demo"
+    namespace = "com.kuikly.kuiklyklinechart"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.tencent.kuiklybase.kline.demo"
+        applicationId = "com.kuikly.kuiklyklinechart"
         minSdk = 21
         targetSdk = 34
         versionCode = 1

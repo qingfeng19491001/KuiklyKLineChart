@@ -33,7 +33,7 @@ kotlin {
 
     cocoapods {
         summary = "Kuikly K-Line Chart Demo"
-        homepage = "https://github.com/klinecharts/KuiklyKLineChart"
+        homepage = "https://github.com/qingfeng19491001/KuiklyKLineChart"
         version = "1.0"
         ios.deploymentTarget = "14.1"
         framework {
@@ -63,7 +63,7 @@ dependencies {
 }
 
 android {
-    namespace = "com.tencent.kuiklybase.kline.demo.shared"
+    namespace = "com.kuikly.kuiklyklinechart.shared"
     compileSdk = 34
     defaultConfig {
         minSdk = 21
@@ -71,5 +71,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    sourceSets {
+        named("main") {
+            assets.srcDirs("src/commonMain/assets")
+        }
     }
 }

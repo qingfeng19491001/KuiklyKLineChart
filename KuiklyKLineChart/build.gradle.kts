@@ -35,6 +35,9 @@ kotlin {
             implementation("com.tencent.kuikly-open:core-annotations:${providers.gradleProperty("KUIKLY_VERSION").get()}")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
         }
+        androidMain.dependencies {
+            implementation("com.tencent.kuikly-open:core-render-android:${providers.gradleProperty("KUIKLY_VERSION").get()}")
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
