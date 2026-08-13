@@ -77,18 +77,6 @@ Windows/Android 验证：
 adb shell monkey -p com.kuikly.kuiklyklinechart -c android.intent.category.LAUNCHER 1
 ```
 
-换到对应开发机后执行：
-
-```shell
-# macOS
-cd iosApp && pod install
-xcodebuild -workspace iosApp.xcworkspace -scheme iosApp -sdk iphonesimulator build
-
-# HarmonyOS KBA Kotlin 产物
-./gradlew -c settings.ohos.gradle.kts :KuiklyKLineChart:compileKotlinOhosArm64 :shared:compileKotlinOhosArm64
-# 再使用 DevEco Studio/Hvigor 构建、安装并启动 ohosApp
-```
-
 ## License
 
 MIT，见 [LICENSE](LICENSE)。
