@@ -32,16 +32,31 @@ private enum class DemoPeriod(val label: String, val span: Int, val unit: String
     MIN_1("1分", 1, "minute"), MIN_5("5分", 5, "minute"), MIN_15("15分", 15, "minute"), MIN_30("30分", 30, "minute"), MIN_60("60分", 60, "minute"), MIN_120("120分", 120, "minute"), QUARTER("季K", 3, "month"), YEAR("年K", 12, "month")
 }
 private val periodBarsJson = DemoPeriod.entries.associateWith { period ->
-    val spacing = when (period.unit) {
-        "minute" -> period.span * 60_000L
-        "week" -> 7L * 86_400_000L
-        "month" -> period.span * 30L * 86_400_000L
-        else -> period.span * 86_400_000L
-    }
-    encodeBars(RandomBarGenerator.defaultSymbolBars(count = if (period.line) 180 else 120).mapIndexed { index, bar ->
-        bar.copy(timestamp = 1_700_000_000_000L + index * spacing)
-    })
+    encodeBars(demoPeriodBars(period.span, period.unit, period.line))
 }
+
+internal fun demoPeriodBars(span: Int, unit: String, line: Boolean): List<KLineBar> {
+    val fiveDayLine = line && unit == "day" && span == 5
+    val spacing = when {
+        fiveDayLine -> 5L * 60_000L
+        unit == "minute" -> span * 60_000L
+        unit == "week" -> 7L * 86_400_000L
+        unit == "month" -> span * 30L * 86_400_000L
+        else -> span * 86_400_000L
+    }
+    val seed = unit.fold(1_337L) { value, char -> value * 31L + char.code } * 31L + span
+    return RandomBarGenerator.defaultSymbolBars(count = if (line) 180 else 120, seed = seed).mapIndexed { index, bar ->
+        val timestamp = if (fiveDayLine) {
+            val barsPerDay = 36
+            1_700_000_000_000L + (index / barsPerDay) * 86_400_000L + (index % barsPerDay) * spacing
+        } else {
+            1_700_000_000_000L + index * spacing
+        }
+        bar.copy(timestamp = timestamp)
+    }
+}
+
+internal fun demoDaySignalBar(): KLineBar = demoPeriodBars(span = 1, unit = "day", line = false)[90]
 private enum class DemoMainIndicator(val label: String, val template: String?, val params: List<Double> = emptyList()) {
     BARE("裸K", null), MA("MA", "MA", listOf(5.0, 10.0, 20.0, 30.0)), BOLL("BOLL", "BOLL"), EXPMA("EXPMA", "EXPMA"), BBI("BBI", "BBI"), ENE("ENE", "ENE")
 }
@@ -266,9 +281,7 @@ internal class FullChartDemo : ShowcasePage() {
     private var aiTitle by observable("AI 趋势判断 · 短期偏强")
     private var aiSummary by observable("价格重新站上短期均线，关注 475.60 支撑位；若跌破应控制仓位风险。")
     private val aiSignalsJson = run {
-        val bar = RandomBarGenerator.defaultSymbolBars(count = 120).mapIndexed { index, value ->
-            value.copy(timestamp = 1_700_000_000_000L + index * 86_400_000L)
-        }[90]
+        val bar = demoDaySignalBar()
         """[{"id":"detail-buy","timestamp":${bar.timestamp},"value":${bar.low},"type":"BUY","title":"AI 买入信号 · 置信度 82%","summary":"短期动能改善并重新站上均线，关注 475.60 支撑位并设置止损。","confidence":0.82}]"""
     }
 
