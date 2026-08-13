@@ -1,6 +1,8 @@
 # KuiklyKLineChart
 
 面向 Kuikly 股票详情与 AI 行情场景的跨端专业 K 线组件，延续并产品化 [KuiklyChart PR #1](https://github.com/qingfeng19491001/KuiklyChart/pull/1) 已验证的交互与展示能力。
+<img width="400" height="867" alt="kuiklyKLineChart" src="https://github.com/user-attachments/assets/8c005761-f2a9-48e0-b597-f1b30edb448f" />
+
 
 ## 接入指南
 
