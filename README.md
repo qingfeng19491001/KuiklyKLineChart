@@ -1,81 +1,94 @@
 # KuiklyKLineChart
 
-从 [KuiklyChart PR #1](https://github.com/qingfeng19491001/KuiklyChart/pull/1) 已验证 K 线能力独立迁移并持续产品化的 Kuikly 跨端 K 线组件。项目主要服务 Task 1 个股详情行情展示，并通过精简模式与 AI 信号 Overlay 支持 Task 2 的行情卡片和股票/指数详情承接页。
+面向 Kuikly 股票详情与 AI 行情场景的跨端专业 K 线组件，延续并产品化 [KuiklyChart PR #1](https://github.com/qingfeng19491001/KuiklyChart/pull/1) 已验证的交互与展示能力。
 
-组件只负责行情数据、K 线/指标、视口交互、Overlay/Signal 与事件输出；不包含股票列表、AI 请求、聊天、Markdown、业务路由或完整详情页。
+## 接入指南
 
-## 能力
-
-- `FULL`：完整 pane、指标、坐标、Overlay、十字线、Tooltip 和视口交互。
-- `COMPACT`：共用同一渲染内核的精简预设；仅保留价格 K 线和轴线，限制最后 60 条可见数据，隐藏坐标文字、副图、指标、Overlay、Tooltip 并禁用手势。
-- `KLineSignal`：BUY / SELL / RISK / INFO 语义信号，复用现有 Overlay 渲染与命中测试。
-- 静态/推送数据：Kuikly Attr 通过 `bars` JSON 替换当前快照；Native View 默认无内置假数据。
-- 公共内核：KMP commonMain 包含数据、指标、pane、viewport、Overlay、交互与 RenderPlan/RenderPipeline。
-
-## Maven
-
-当前本地发布坐标：
+普通 Kotlin/Android/iOS 坐标：
 
 ```kotlin
-implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-SNAPSHOT")
+implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21-SNAPSHOT")
 ```
 
-仓库暂未声明远程 Maven 仓库或已发布版本；以上坐标用于本地 `publishToMavenLocal`/后续发布配置。
-
-## Kuikly DSL
-
-`bars` 和 `signals` 使用 JSON 字符串，因为 Kuikly 扩展 View 的跨端 `setProp` 只传基础类型：
+HarmonyOS 使用 KBA 工具链对应坐标：
 
 ```kotlin
-KLineChart {
+implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010-SNAPSHOT")
+```
+
+Android 宿主注册：
+
+```kotlin
+override fun registerExternalRenderView(export: IKuiklyRenderExport) {
+    export.registerKuiklyKLineChart()
+}
+```
+
+iOS 由 Objective-C/Swift 类名 `KRKLineChart` 动态发现；HarmonyOS 在 `KuiklyViewDelegate.getCustomRenderViewCreatorRegisterMapV2()` 中用同名 `KRKLineChart` 注册。仓库已提供两端宿主工程骨架，本机为 Windows 且无对应运行环境，需在 macOS/HarmonyOS 开发机完成构建和真机验收。
+
+## 核心 API
+
+业务代码与组件处于同一 Kuikly 进程时，优先使用真实数据源入口：
+
+```kotlin
+val controller = KLineChartController()
+
+KLineChart(dataSource = stockDataSource, controller = controller) {
     attr {
-        symbol("00700", "Tencent Holdings")
+        symbol("00700", "腾讯控股")
         period(1, "day")
-        mode("full") // 或 compact
-        bars(barsJson)
-        signals(signalsJson)
+        mode("full")
     }
     event {
-        onSignalClick { id, title, summary ->
-            // 业务层展示 AI 解读卡
-        }
-        onCrosshairChange { timestamp, price -> }
-        onError { code, message -> }
+        onVisibleRangeChange { start, end -> }
+        onBarClick { timestamp, index -> }
+        onLoadStateChange { initial, before, after -> }
+        onOverlayClick { id -> }
+        onOverlayChange { revision -> }
+        onSignalClick { id, title, summary -> }
     }
 }
 ```
 
-`barsJson` 字段：`timestamp/open/high/low/close` 必填，`volume/turnover` 可选。`signalsJson` 字段：`id/timestamp/value/type/title/summary` 必填，`confidence` 可选且范围为 0..1。
+跨运行时或纯扩展 View 场景可通过 `bars(json)`、`signals(json)` 和 `config(json)` 推送序列化数据。Native View 默认不生成或写死股票数据。
 
-## 三个 Showcase
+`KLineChartController` 支持滚动到最新/时间戳、按 K 线数量平移、缩放、窗格和指标增删改、Overlay 增删改、状态导出恢复；View 侧还提供 `loadBefore()`、`loadAfter()` 与 `retryInitialLoad()`。
 
-Android 首屏 `KuiklyKLineDemo` 是 Kuikly Router：
+## 扩展能力
 
-- `FullChartDemo`：完整专业 K 线。
-- `CompactChartDemo`：AI 回复卡片尺寸的精简 K 线。
-- `SignalOverlayDemo`：信号点击联动业务层解读卡。
+- `FULL`：多周期、主图与双副图、坐标、平移缩放、十字线、Tooltip、Overlay 和 AI 信号。
+- `COMPACT`：复用同一内核，限制可见数量并关闭副图、坐标文字、Overlay 与手势，适合聊天回复卡片。
+- 内置指标：MA、BOLL、EXPMA、BBI、ENE、VOL、AMOUNT、MACD、KDJ、RSI、WR、BBD。
+- `KLineSignal`：BUY、SELL、RISK、INFO；组件负责绘制、命中和回调，AI 请求、真实性、解读卡与风险声明由业务页面负责。
 
-Demo 数据由这些 Kuikly Page 显式传入，不在 Native View 中生成。
+## 示例
 
-## 平台真实状态
+Demo 默认进入 `router`，提供三个可点页面：
 
-- Android：Kuikly `@Page` + 扩展 View + Native Canvas 已接通，可通过 `:androidApp:assembleDebug` 构建。
-- iOS：仓库有 SwiftUI/UIView Canvas 示例源码和 KMP target，但当前不是与 Android 对等的 Kuikly 扩展 View；仓库也未提交完整 Xcode 工程，需在 macOS 集成验证。
-- HarmonyOS：尚未实现 Native 扩展 View 或宿主工程。
-- JS：核心/common 与 shared 的 Node 测试可运行；未提供浏览器宿主 UI。
+- `FullChartDemo`：Task 1 与 Task 2 详情承接页使用的完整专业 K 线。
+- `CompactChartDemo`：Task 2 聊天回复中的迷你行情卡片。
+- `SignalOverlayDemo`：点击 AI 信号并联动业务解读卡。
 
-因此当前不宣称 iOS/HarmonyOS 三端 Kuikly Demo 已完成。
-
-## 构建与测试
+Windows/Android 验证：
 
 ```shell
-./gradlew :KuiklyKLineChart:compileCommonMainKotlinMetadata
-./gradlew :KuiklyKLineChart:jsNodeTest
-./gradlew :shared:compileCommonMainKotlinMetadata
-./gradlew :shared:jsNodeTest
-./gradlew :androidApp:assembleDebug
+./gradlew :KuiklyKLineChart:jsNodeTest :shared:compileCommonMainKotlinMetadata :androidApp:assembleDebug
+./gradlew :androidApp:installDebug
+adb shell monkey -p com.kuikly.kuiklyklinechart -c android.intent.category.LAUNCHER 1
+```
+
+换到对应开发机后执行：
+
+```shell
+# macOS
+cd iosApp && pod install
+xcodebuild -workspace iosApp.xcworkspace -scheme iosApp -sdk iphonesimulator build
+
+# HarmonyOS KBA Kotlin 产物
+./gradlew -c settings.ohos.gradle.kts :KuiklyKLineChart:compileKotlinOhosArm64 :shared:compileKotlinOhosArm64
+# 再使用 DevEco Studio/Hvigor 构建、安装并启动 ohosApp
 ```
 
 ## License
 
-MIT，见 [LICENSE](LICENSE)；第三方说明见 [NOTICE](NOTICE)。
+MIT，见 [LICENSE](LICENSE)。

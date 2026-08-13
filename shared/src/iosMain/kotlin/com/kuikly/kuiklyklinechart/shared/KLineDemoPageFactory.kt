@@ -1,8 +1,8 @@
-package com.tencent.kuiklybase.kline.demo.shared
+package com.kuikly.kuiklyklinechart.shared
 
 import com.tencent.kuiklybase.kline.KLinePointerEvent
-import com.tencent.kuiklybase.kline.demo.shared.canvas.KLineCanvasAdapter
-import com.tencent.kuiklybase.kline.demo.shared.demo.BasicKLinePage
+import com.kuikly.kuiklyklinechart.shared.canvas.KLineCanvasAdapter
+import com.kuikly.kuiklyklinechart.shared.demo.BasicKLinePage
 import kotlin.native.ObjCName
 import kotlin.experimental.ExperimentalObjCName
 
