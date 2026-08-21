@@ -12,15 +12,51 @@ class AndroidKLineCanvasAdapter(private val canvas: Canvas, private val density:
     private val paint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path: Path = Path()
 
-    private fun parseColor(color: String): Int = try {
-        val raw = color.removePrefix("#")
-        when (raw.length) {
-            8 -> Color.parseColor("#${raw.takeLast(2)}${raw.take(6)}")
-            else -> Color.parseColor("#$raw")
-        }
-    } catch (_: Throwable) { Color.GRAY }
+    // A/B 测试（C 组 batchDraw）：画笔状态签名缓存。
+    // 批量渲染路径下同样式图元连续输出，签名相同则跳过 Paint 重配置；
+    // 默认路径下签名几乎每次不同，行为与全量重配一致。
+    private var paintSignature: String? = null
+
+    // 颜色解析缓存，避免每图元一次字符串处理
+    private val colorCache = HashMap<String, Int>()
+
+    private fun parseColor(color: String): Int = colorCache.getOrPut(color) {
+        try {
+            val raw = color.removePrefix("#")
+            when (raw.length) {
+                8 -> Color.parseColor("#${raw.takeLast(2)}${raw.take(6)}")
+                else -> Color.parseColor("#$raw")
+            }
+        } catch (_: Throwable) { Color.GRAY }
+    }
 
     private fun Float.dp(): Float = this * density
+
+    /** 配置描边画笔；与上次签名一致时直接复用当前状态。 */
+    private fun strokePaint(color: String, strokeWidth: Float, dash: List<Double>): Paint {
+        val signature = "S|$color|$strokeWidth|$dash"
+        if (signature == paintSignature) return paint
+        paint.reset(); paint.isAntiAlias = true
+        paint.style = Paint.Style.STROKE
+        paint.color = parseColor(color)
+        paint.strokeWidth = strokeWidth
+        if (dash.isNotEmpty()) {
+            paint.pathEffect = DashPathEffect(dash.map { it.toFloat() }.toFloatArray(), 0f)
+        }
+        paintSignature = signature
+        return paint
+    }
+
+    /** 配置填充画笔；与上次签名一致时直接复用当前状态。 */
+    private fun fillPaint(color: String): Paint {
+        val signature = "F|$color"
+        if (signature == paintSignature) return paint
+        paint.reset(); paint.isAntiAlias = true
+        paint.style = Paint.Style.FILL
+        paint.color = parseColor(color)
+        paintSignature = signature
+        return paint
+    }
 
     override fun withSave(block: () -> Unit) {
         val count = canvas.save()
@@ -31,35 +67,25 @@ class AndroidKLineCanvasAdapter(private val canvas: Canvas, private val density:
         startX: Double, startY: Double, endX: Double, endY: Double,
         color: String, width: Double, dash: List<Double>,
     ) {
-        paint.reset(); paint.isAntiAlias = true
-        paint.style = Paint.Style.STROKE
-        paint.color = parseColor(color)
-        paint.strokeWidth = width.toFloat().coerceAtLeast(0.5f)
-        if (dash.isNotEmpty()) {
-            paint.pathEffect = DashPathEffect(dash.map { it.toFloat() }.toFloatArray(), 0f)
-        }
-        canvas.drawLine(startX.toFloat(), startY.toFloat(), endX.toFloat(), endY.toFloat(), paint)
+        val p = strokePaint(color, width.toFloat().coerceAtLeast(0.5f), dash)
+        canvas.drawLine(startX.toFloat(), startY.toFloat(), endX.toFloat(), endY.toFloat(), p)
     }
 
     override fun drawRect(
         left: Double, top: Double, right: Double, bottom: Double,
         color: String, strokeColor: String?, strokeWidth: Double, cornerRadius: Double,
     ) {
-        paint.reset(); paint.isAntiAlias = true
         val rectF = android.graphics.RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
-        paint.style = Paint.Style.FILL
-        paint.color = parseColor(color)
+        val p = fillPaint(color)
         if (cornerRadius > 0) {
-            canvas.drawRoundRect(rectF, cornerRadius.toFloat(), cornerRadius.toFloat(), paint)
+            canvas.drawRoundRect(rectF, cornerRadius.toFloat(), cornerRadius.toFloat(), p)
         } else {
-            canvas.drawRect(rectF, paint)
+            canvas.drawRect(rectF, p)
         }
         if (strokeColor != null && strokeWidth > 0) {
-            paint.style = Paint.Style.STROKE
-            paint.color = parseColor(strokeColor)
-            paint.strokeWidth = strokeWidth.toFloat()
-            if (cornerRadius > 0) canvas.drawRoundRect(rectF, cornerRadius.toFloat(), cornerRadius.toFloat(), paint)
-            else canvas.drawRect(rectF, paint)
+            val sp = strokePaint(strokeColor, strokeWidth.toFloat(), emptyList())
+            if (cornerRadius > 0) canvas.drawRoundRect(rectF, cornerRadius.toFloat(), cornerRadius.toFloat(), sp)
+            else canvas.drawRect(rectF, sp)
         }
     }
 
@@ -67,24 +93,18 @@ class AndroidKLineCanvasAdapter(private val canvas: Canvas, private val density:
         points: List<Pair<Double, Double>>, color: String, width: Double, dash: List<Double>,
     ) {
         if (points.size < 2) return
-        paint.reset(); paint.isAntiAlias = true
-        paint.style = Paint.Style.STROKE
-        paint.color = parseColor(color)
-        paint.strokeWidth = width.toFloat().coerceAtLeast(0.5f)
-        if (dash.isNotEmpty()) paint.pathEffect = DashPathEffect(dash.map { it.toFloat() }.toFloatArray(), 0f)
+        val p = strokePaint(color, width.toFloat().coerceAtLeast(0.5f), dash)
         path.reset()
         points.forEachIndexed { idx, (x, y) ->
             if (idx == 0) path.moveTo(x.toFloat(), y.toFloat())
             else path.lineTo(x.toFloat(), y.toFloat())
         }
-        canvas.drawPath(path, paint)
+        canvas.drawPath(path, p)
     }
 
     override fun drawCircle(cx: Double, cy: Double, radius: Double, color: String) {
-        paint.reset(); paint.isAntiAlias = true
-        paint.style = Paint.Style.FILL
-        paint.color = parseColor(color)
-        canvas.drawCircle(cx.toFloat(), cy.toFloat(), radius.toFloat().coerceAtLeast(1f), paint)
+        val p = fillPaint(color)
+        canvas.drawCircle(cx.toFloat(), cy.toFloat(), radius.toFloat().coerceAtLeast(1f), p)
     }
 
     override fun drawCandle(
@@ -104,16 +124,23 @@ class AndroidKLineCanvasAdapter(private val canvas: Canvas, private val density:
         val bottom = maxOf(openY.toFloat(), closeY.toFloat())
         val bodyBottom = if (bottom - top < 1f) top + 1f else bottom
         canvas.drawRect(x.toFloat() - halfBody, top, x.toFloat() + halfBody, bodyBottom, paint)
+        // 画笔当前处于 FILL(color) 状态，登记签名供后续复用
+        paintSignature = "F|$color"
     }
 
     override fun drawText(
         text: String, left: Double, top: Double, right: Double, bottom: Double,
         color: String, textSize: Double,
     ) {
-        paint.reset(); paint.isAntiAlias = true
-        paint.color = parseColor(color)
-        paint.textSize = textSize.toFloat().coerceAtLeast(8f)
-        paint.typeface = Typeface.DEFAULT
+        // 文本绘制独占配置 textSize/typeface，登记专用签名
+        val signature = "T|$color|$textSize"
+        if (signature != paintSignature) {
+            paint.reset(); paint.isAntiAlias = true
+            paint.color = parseColor(color)
+            paint.textSize = textSize.toFloat().coerceAtLeast(8f)
+            paint.typeface = Typeface.DEFAULT
+            paintSignature = signature
+        }
         val bounds = Rect()
         paint.getTextBounds(text, 0, text.length, bounds)
         val textWidth = bounds.width().toFloat()

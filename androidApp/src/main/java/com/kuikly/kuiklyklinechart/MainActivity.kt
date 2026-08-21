@@ -13,7 +13,6 @@ import com.tencent.kuikly.core.render.android.adapter.KuiklyRenderAdapterManager
 import com.tencent.kuikly.core.render.android.css.ktx.toMap
 import com.tencent.kuikly.core.render.android.expand.KuiklyBaseView
 import com.tencent.kuikly.core.render.android.expand.KuiklyRenderViewBaseDelegatorDelegate
-import com.tencent.kuiklybase.kline.view.KLineChartView
 import com.tencent.kuiklybase.kline.host.registerKuiklyKLineChart
 import org.json.JSONObject
 
@@ -65,7 +64,6 @@ class MainActivity : Activity() {
         kuiklyView?.onDetach()
         kuiklyView = null
         super.onDestroy()
-
     }
 
     private fun setLightStatusBar(light: Boolean) {

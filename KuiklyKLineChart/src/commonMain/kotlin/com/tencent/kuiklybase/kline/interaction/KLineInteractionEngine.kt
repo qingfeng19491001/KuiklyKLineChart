@@ -58,9 +58,17 @@ class KLineInteractionEngine(
                     request.yCoordinates,
                 )
             }
-            KLineInteractionIntent.CROSSHAIR -> showCrosshair(
-                request.paneId, request.pixelX, request.pixelY, request.xCoordinates, request.yCoordinates,
-            )
+            KLineInteractionIntent.CROSSHAIR -> {
+                // Hosts report a pointer down as soon as the finger lands, which already started a
+                // viewport gesture for this very touch. A long press only arrives afterwards, so roll
+                // that gesture back before the crosshair takes over.
+                if (store.snapshot.interactionState in PREEMPTABLE_BY_CROSSHAIR) {
+                    cancelInteraction()
+                }
+                showCrosshair(
+                    request.paneId, request.pixelX, request.pixelY, request.xCoordinates, request.yCoordinates,
+                )
+            }
             KLineInteractionIntent.PANE_SEPARATOR -> request.separatorIndex?.let { index ->
                 paneResize.beginResize(index, request.pixelY, request.paneLayouts)
             } == true
@@ -184,5 +192,9 @@ class KLineInteractionEngine(
 
     private companion object {
         const val CLICK_HIT_RADIUS = 24.0
+        val PREEMPTABLE_BY_CROSSHAIR = setOf(
+            KLineInteractionState.PANNING,
+            KLineInteractionState.SCALING,
+        )
     }
 }

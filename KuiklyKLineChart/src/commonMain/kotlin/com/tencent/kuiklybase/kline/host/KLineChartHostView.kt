@@ -23,7 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
-class KLineChartDsl internal constructor() {
+class KLineChartDsl {
     internal var theme: KLineTheme = KLineTheme.LIGHT
     internal var panes: MutableList<KLinePane> = mutableListOf(
         KLinePane(

@@ -138,6 +138,43 @@ class KLineViewportInteractionEngineTest {
         assertEquals(KLineInteractionState.CROSSHAIR, store.snapshot.interactionState)
     }
 
+    @Test
+    fun longPressPreemptsThePanThatTheSameTouchAlreadyStarted() {
+        val (store, engine) = fixture()
+        val x = KLineXCoordinateSystem(plot, store.snapshot.viewport!!, bars)
+        val initialViewport = store.snapshot.viewport!!
+
+        val down = engine.handlePointerDown(
+            KLinePointerDownRequest(
+                paneId = "price",
+                pixelX = 101.0,
+                pixelY = 25.0,
+                xCoordinates = x,
+                yCoordinates = y,
+                viewportGesture = KLineViewportGesture.PAN,
+            ),
+        )
+        assertEquals(KLineInteractionIntent.PAN, down)
+        assertTrue(engine.updatePan(120.0, plot))
+
+        val longPress = engine.handlePointerDown(
+            KLinePointerDownRequest(
+                paneId = "price",
+                pixelX = 101.0,
+                pixelY = 25.0,
+                xCoordinates = x,
+                yCoordinates = y,
+                requestCrosshair = true,
+                viewportGesture = null,
+                ordinaryClick = false,
+            ),
+        )
+        assertEquals(KLineInteractionIntent.CROSSHAIR, longPress)
+        assertEquals(KLineInteractionState.CROSSHAIR, store.snapshot.interactionState)
+        assertEquals(initialViewport, store.snapshot.viewport)
+        assertEquals(89_000L, store.snapshot.crosshair!!.timestamp)
+    }
+
     private fun fixture(): Pair<KLineStore, KLineInteractionEngine> {
         val store = KLineStore()
         store.replaceAll(bars)

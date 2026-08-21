@@ -399,14 +399,28 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
                 touchMoved = false
             }
             MotionEvent.ACTION_MOVE -> {
-                if (kotlin.math.abs(event.x - touchDownX) > 12f * density || kotlin.math.abs(event.y - touchDownY) > 12f * density) {
+                val dx = kotlin.math.abs(event.x - touchDownX)
+                val dy = kotlin.math.abs(event.y - touchDownY)
+                if (dx > 12f * density || dy > 12f * density) {
                     touchMoved = true
+                    if (scaleDetector.isInProgress) {
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    } else if (dx > dy) {
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    } else {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        dispatch(KLinePointerEvent.Cancel(event.x.toDouble(), event.y.toDouble()))
+                    }
                 }
             }
             MotionEvent.ACTION_UP -> {
                 dispatch(KLinePointerEvent.Up(event.x.toDouble(), event.y.toDouble()))
+                parent?.requestDisallowInterceptTouchEvent(false)
             }
-            MotionEvent.ACTION_CANCEL -> dispatch(KLinePointerEvent.Cancel(event.x.toDouble(), event.y.toDouble()))
+            MotionEvent.ACTION_CANCEL -> {
+                dispatch(KLinePointerEvent.Cancel(event.x.toDouble(), event.y.toDouble()))
+                parent?.requestDisallowInterceptTouchEvent(false)
+            }
         }
         return true
     }
@@ -669,21 +683,11 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
                 val value = panes.optJSONObject(index) ?: continue
                 val id = value.optString("id")
                 if (id.isBlank()) continue
-                val kind = if (value.optString("kind").equals("price", ignoreCase = true)) {
-                    KLinePaneKind.PRICE
-                } else {
-                    KLinePaneKind.INDICATOR
+                // 与 setPane/restoreState 共用 parsePane：统一解析 yAxes（含 min/max/referenceValue/autoScale）与 state
+                val pane = parsePane(value).let { copy ->
+                    if (value.has("order")) copy else copy.copy(order = index)
                 }
-                controller.setPane(
-                    KLinePane(
-                        id = id,
-                        kind = kind,
-                        order = value.optInt("order", index),
-                        weight = value.optDouble("weight", if (kind == KLinePaneKind.PRICE) 3.0 else 1.0),
-                        minHeight = value.optDouble("minHeight", if (kind == KLinePaneKind.PRICE) 120.0 else 60.0),
-                        yAxes = listOf(KLineYAxis("$id-y", 0.0, 100.0, autoScale = true)),
-                    ),
-                )
+                controller.setPane(pane)
                 configuredPaneIds += id
             }
         }
