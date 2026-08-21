@@ -346,7 +346,9 @@ internal class FullChartDemo : ShowcasePage() {
                 vbind({ listOf(page.selectedPeriod.name, page.mainIndicator.name, page.firstIndicator.name, page.secondIndicator.name, page.openMenu?.name).joinToString() }) {
                     KLineChart {
                         attr {
-                            flex(1f); touchEnable(page.openMenu == null); symbol("00700", "Tencent Holdings")
+                            // 用明确高度替代 flex(1f)：规避 iOS OpenKuiklyIOSRender 对双层 flex 嵌套的
+                            // 布局计算差异（Android/OHOS flex 正常，iOS KLineChart 未撑满导致中间空白）
+                            height(page.chartViewportHeight()); touchEnable(page.openMenu == null); symbol("00700", "Tencent Holdings")
                             period(page.selectedPeriod.span, page.selectedPeriod.unit)
                             mode("full"); priceStyle(if (page.selectedPeriod.line) "line" else "candle"); bars(periodBarsJson.getValue(page.selectedPeriod)); config(page.fullConfig())
                             signals(if (page.selectedPeriod == DemoPeriod.DAY) page.aiSignalsJson else "[]")

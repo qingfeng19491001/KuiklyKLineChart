@@ -10,8 +10,6 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
-import kotlin.concurrent.atomics.AtomicLong
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 class KLineChartController {
     private val pendingCommands = ArrayDeque<KLineControllerCommand>()
@@ -135,17 +133,16 @@ class KLineChartController {
     }
 }
 
-@OptIn(ExperimentalAtomicApi::class)
 private object KLineOverlayControllerIdAllocator {
-    private val nextPrefix = AtomicLong(1)
+    // 使用方均在 Kuikly 主线程，无需原子操作；
+    // 避免依赖 kotlin.concurrent.atomics（OHOS Kotlin 2.0.21 工具链不提供该 API）。
+    private var nextPrefix = 1L
 
     fun allocatePrefix(): Long {
-        while (true) {
-            val prefix = nextPrefix.load()
-            check(prefix > 0) { "Overlay controller id prefix sequence exhausted" }
-            val next = if (prefix == Long.MAX_VALUE) 0 else prefix + 1
-            if (nextPrefix.compareAndSet(prefix, next)) return prefix
-        }
+        val prefix = nextPrefix
+        check(prefix > 0) { "Overlay controller id prefix sequence exhausted" }
+        nextPrefix = if (prefix == Long.MAX_VALUE) 0 else prefix + 1
+        return prefix
     }
 }
 

@@ -53,6 +53,9 @@ kotlin {
             dependencies {
                 implementation("com.tencent.kuikly-open:core:${Version.getKuiklyOhosVersion()}")
                 implementation("com.tencent.kuikly-open:core-annotations:${Version.getKuiklyOhosVersion()}")
+                // OHOS Kotlin 2.0.21-KBA 工具链专用协程分支（含 ohosArm64 klib），
+                // 官方 kotlinx-coroutines 未发布 ohos 目标。
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:2.0.21-coroutines-KBA-001")
             }
         }
         val commonTest by getting {

@@ -1,1 +1,9 @@
 export const initKuikly: () => number;
+export const createKLineBridge: () => number;
+export const setKLineProp: (handle: number, key: string, value: string) => boolean;
+export const callKLine: (handle: number, method: string, params: string) => string;
+export const resizeKLine: (handle: number, width: number, height: number) => void;
+export const pointerKLine: (handle: number, kind: string, x: number, y: number, scale: number, count: number) => void;
+export const renderKLineCommands: (handle: number) => string;
+export const pollKLineEvents: (handle: number) => string;
+export const disposeKLineBridge: (handle: number) => void;
