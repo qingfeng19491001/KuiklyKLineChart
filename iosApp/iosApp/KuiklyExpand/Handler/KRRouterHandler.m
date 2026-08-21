@@ -13,7 +13,15 @@
 }
 
 - (void)closePage:(UIViewController *)controller {
-    [controller.navigationController popViewControllerAnimated:YES];
+    UINavigationController *nav = controller.navigationController;
+    if (nav.viewControllers.count > 1) {
+        [nav popViewControllerAnimated:YES];
+        return;
+    }
+    // 栈底页（如 -KLinePage FullChartDemo 冷启动）无法 pop，回到入口 Router 页
+    KuiklyRenderViewController *router =
+        [[KuiklyRenderViewController alloc] initWithPageName:@"router" pageData:@{}];
+    [nav setViewControllers:@[router] animated:YES];
 }
 
 @end

@@ -242,23 +242,32 @@ internal abstract class ShowcasePage : Pager() {
         return {
             attr { flex(1f); backgroundColor(Color.WHITE) }
             View {
-                attr { paddingTop(ctx.pageData.statusBarHeight); backgroundColor(Color.WHITE) }
+                // 固定标题栏高度，避免下方 chart 显式高度过大时把返回区挤没
+                attr {
+                    height(ctx.pageData.statusBarHeight + 44f)
+                    paddingTop(ctx.pageData.statusBarHeight)
+                    backgroundColor(Color.WHITE)
+                    zIndex(100)
+                }
                 View {
-                    attr { height(44f); allCenter() }
+                    attr { height(44f); allCenter(); paddingLeft(48f); paddingRight(48f) }
                     Text {
                         attr { text(ctx.pageTitle); fontSize(17f); fontWeightSemisolid(); color(Color(0xFF333333)) }
                     }
                 }
                 View {
                     attr {
-                        positionAbsolute(); top(ctx.pageData.statusBarHeight + 10f); left(12f)
-                        size(24f, 24f); allCenter()
+                        positionAbsolute(); top(ctx.pageData.statusBarHeight); left(0f)
+                        size(48f, 44f); allCenter(); zIndex(101)
                     }
-                    Text { attr { text("←"); fontSize(20f); color(Color(0xFF333333)) } }
+                    Text { attr { text("←"); fontSize(22f); color(Color(0xFF333333)) } }
                     event { click { ctx.acquireModule<RouterModule>(RouterModule.MODULE_NAME).closePage() } }
                 }
             }
-            ctx.content().invoke(this)
+            View {
+                attr { flex(1f) }
+                ctx.content().invoke(this)
+            }
         }
     }
 
@@ -502,8 +511,12 @@ internal class FullChartDemo : ShowcasePage() {
         }
     }
 
-    private fun chartViewportHeight(): Float =
-        (pageData.pageViewHeight - pageData.statusBarHeight - 44f - 104f - 34f - 128f).coerceAtLeast(340f)
+    private fun chartViewportHeight(): Float {
+        // 不强制 coerceAtLeast(340)：可用高度不足时宁可缩小图表，也不要挤掉标题栏/返回按钮
+        val available =
+            pageData.pageViewHeight - pageData.statusBarHeight - 44f - 104f - 34f - 128f
+        return available.coerceAtLeast(120f)
+    }
 
     private fun fullConfig(): String {
         val main = mainIndicator.template?.let { template ->
