@@ -2,18 +2,23 @@ import UIKit
 import shared
 import CoreGraphics
 
-class CGContextCanvasAdapter: NSObject, KLineCanvasAdapter {
+final class CGContextCanvasAdapter: NSObject, KKLCKLineCanvasAdapter {
     private let ctx: CGContext
     private let scale: Double
 
     init(context: CGContext, scale: Double) {
         self.ctx = context
-        self.scale = scale
+        self.scale = scale > 0 ? scale : 1
         super.init()
         UIGraphicsPushContext(context)
+        // 共享绘制内核输出物理像素坐标（与 Android Canvas 的像素坐标系一致），
+        // 而 UIView.draw(_:) 传入的 CGContext 用户空间单位是 point，故按屏幕缩放系数换算。
+        ctx.saveGState()
+        ctx.scaleBy(x: CGFloat(1.0 / self.scale), y: CGFloat(1.0 / self.scale))
     }
 
     deinit {
+        ctx.restoreGState()
         UIGraphicsPopContext()
     }
 
@@ -89,15 +94,23 @@ class CGContextCanvasAdapter: NSObject, KLineCanvasAdapter {
         }
     }
 
-    func drawPolyline(points: [Any], color: String, width: Double, dash: [KotlinDouble]) {
+    func drawPolyline(
+        points: [KotlinPair<KotlinDouble, KotlinDouble>],
+        color: String,
+        width: Double,
+        dash: [KotlinDouble]
+    ) {
         guard points.count >= 2 else { return }
         ctx.setStrokeColor(self.color(from: color).cgColor)
         ctx.setLineWidth(max(CGFloat(width), 0.5))
         applyDash(dash, width: width)
         ctx.beginPath()
-        for (idx, point) in points.enumerated() {
-            guard let pair = point as? (Double, Double) else { continue }
-            let p = CGPoint(x: CGFloat(pair.0), y: CGFloat(pair.1))
+        for (idx, pair) in points.enumerated() {
+            guard let first = pair.first, let second = pair.second else { continue }
+            let p = CGPoint(
+                x: CGFloat(truncating: first),
+                y: CGFloat(truncating: second)
+            )
             if idx == 0 { ctx.move(to: p) } else { ctx.addLine(to: p) }
         }
         ctx.strokePath()

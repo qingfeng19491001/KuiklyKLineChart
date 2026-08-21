@@ -12,6 +12,8 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
+		4B4C00010000000000000001 /* KRKLineChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B4C00020000000000000002 /* KRKLineChart.swift */; };
+		4B4C00030000000000000003 /* CGContextCanvasAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B4C00040000000000000004 /* CGContextCanvasAdapter.swift */; };
 		3FDCFB96518F86B53D4E5ADD /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28A2BBF98AD622240C0C6069 /* Pods_iosApp.framework */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
 		FF6B714429A2A174009349F1 /* KuiklyRenderViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FF6B713F29A2A173009349F1 /* KuiklyRenderViewController.m */; };
@@ -28,6 +30,8 @@
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
+		4B4C00020000000000000002 /* KRKLineChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KRKLineChart.swift; sourceTree = "<group>"; };
+		4B4C00040000000000000004 /* CGContextCanvasAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGContextCanvasAdapter.swift; sourceTree = "<group>"; };
 		28A2BBF98AD622240C0C6069 /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		312F0DBEF95A91A72E5FCBFA /* Pods-iosApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.debug.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -111,6 +115,8 @@
 		7555FF7D242A565900829871 /* iosApp */ = {
 			isa = PBXGroup;
 			children = (
+				4B4C00020000000000000002 /* KRKLineChart.swift */,
+				4B4C00040000000000000004 /* CGContextCanvasAdapter.swift */,
 				0474A3EF29F6A3FE00F43E31 /* Vendor */,
 				FF6B714629A2A315009349F1 /* KuiklyRenderViewPage.swift */,
 				FF6B713E29A2A10E009349F1 /* KuiklyExpand */,
@@ -295,6 +301,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4B4C00010000000000000001 /* KRKLineChart.swift in Sources */,
+				4B4C00030000000000000003 /* CGContextCanvasAdapter.swift in Sources */,
 				FF6B714429A2A174009349F1 /* KuiklyRenderViewController.m in Sources */,
 				04E32B3E29F01975000A6BC5 /* KRRouterHandler.m in Sources */,
 				0474A3F329F6A41000F43E31 /* UINavigationController+FDFullscreenPopGesture.m in Sources */,
