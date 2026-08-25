@@ -33,5 +33,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "KuiklyKLineChart"
 include(":KuiklyKLineChart")
+include(":KuiklyKLineChartAndroid")
 include(":shared")
 include(":androidApp")

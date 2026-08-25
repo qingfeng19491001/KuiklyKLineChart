@@ -10,7 +10,7 @@ import com.tencent.kuiklybase.kline.pane.KLinePaneKind
 import com.tencent.kuiklybase.kline.KLineChartMode
 import com.tencent.kuiklybase.kline.KLinePriceStyle
 
-data class KLineVisibleRange(val startInclusive: Int, val endExclusive: Int) {
+internal data class KLineVisibleRange(val startInclusive: Int, val endExclusive: Int) {
     init { require(startInclusive >= 0 && endExclusive >= startInclusive) }
     val size: Int get() = endExclusive - startInclusive
     val isEmpty: Boolean get() = size == 0
@@ -18,9 +18,9 @@ data class KLineVisibleRange(val startInclusive: Int, val endExclusive: Int) {
     companion object { val EMPTY = KLineVisibleRange(0, 0) }
 }
 
-data class KLinePoint(val x: Double, val y: Double)
-data class KLineRenderBar(val index: Int, val bar: KLineBar, val x: Double)
-data class KLineRenderPane(
+internal data class KLinePoint(val x: Double, val y: Double)
+internal data class KLineRenderBar(val index: Int, val bar: KLineBar, val x: Double)
+internal data class KLineRenderPane(
     val id: String,
     val kind: KLinePaneKind,
     val rect: KLineRect,
@@ -28,14 +28,14 @@ data class KLineRenderPane(
     val headerRect: KLineRect? = null,
     val xAxisRect: KLineRect? = null,
 )
-data class KLineRenderAxis(val id: String, val minValue: Double, val maxValue: Double, val valueToPixelScale: Double, val valueToPixelOffset: Double) {
+internal data class KLineRenderAxis(val id: String, val minValue: Double, val maxValue: Double, val valueToPixelScale: Double, val valueToPixelOffset: Double) {
     fun valueToPixel(value: Double): Double = value * valueToPixelScale + valueToPixelOffset
 }
-class KLineIndicatorRenderSeries(val paneId: String, val key: String, val type: KLineIndicatorFigureType, val color: String, val latestValue: Double?, points: List<KLinePoint>) {
+internal class KLineIndicatorRenderSeries(val paneId: String, val key: String, val type: KLineIndicatorFigureType, val color: String, val latestValue: Double?, points: List<KLinePoint>) {
     val points: List<KLinePoint> = frozenList(points)
 }
 
-sealed interface KLineOverlayRenderFigure {
+internal sealed interface KLineOverlayRenderFigure {
     val style: KLineOverlayFigureStyle
     data class Line(val start: KLinePoint, val end: KLinePoint, override val style: KLineOverlayFigureStyle) : KLineOverlayRenderFigure
     class Polyline(points: List<KLinePoint>, override val style: KLineOverlayFigureStyle) : KLineOverlayRenderFigure {
@@ -44,10 +44,10 @@ sealed interface KLineOverlayRenderFigure {
     data class Text(val anchor: KLinePoint, val text: String, override val style: KLineOverlayFigureStyle) : KLineOverlayRenderFigure
 }
 
-data class KLineCrosshairRenderData(val paneId: String, val point: KLinePoint, val xLabel: String, val yLabel: String)
-class KLineTooltipRenderData(val bounds: KLineRect, lines: List<String>) { val lines: List<String> = frozenList(lines) }
+internal data class KLineCrosshairRenderData(val paneId: String, val point: KLinePoint, val xLabel: String, val yLabel: String)
+internal class KLineTooltipRenderData(val bounds: KLineRect, lines: List<String>) { val lines: List<String> = frozenList(lines) }
 
-data class KLineRenderFeatures(
+internal data class KLineRenderFeatures(
     val axisLabels: Boolean,
     val priceAnnotations: Boolean,
     val interaction: Boolean,
@@ -65,7 +65,7 @@ data class KLineRenderFeatures(
     }
 }
 
-class KLineRenderPlan internal constructor(
+internal class KLineRenderPlan internal constructor(
     val bounds: KLineRect,
     val visibleRange: KLineVisibleRange,
     val contentRange: KLineVisibleRange = visibleRange,

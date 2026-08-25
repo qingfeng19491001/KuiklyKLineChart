@@ -2,7 +2,7 @@ package com.tencent.kuiklybase.kline.indicator
 
 import com.tencent.kuiklybase.kline.data.KLineBar
 
-object KLineMovingAverageIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineMovingAverageIndicator : KLineIncrementalIndicatorTemplate {
     override fun finiteLookback(params: List<Double>) = params.ifEmpty { defaultParams }.maxOf(::positivePeriod)
     override val name: String = "MA"
     override val defaultParams: List<Double> = listOf(5.0, 10.0, 20.0, 30.0)

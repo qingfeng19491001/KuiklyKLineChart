@@ -153,5 +153,5 @@ class KLineBatchedRenderTest {
 
     private fun bar(index: Int, close: Double = 10.0 + index % 10) = KLineBar(index.toLong(), close - 1, close + 1, close - 2, close, 100.0 + index)
 
-    companion object { val BOUNDS = KLineRect(0.0, 0.0, 240.0, 160.0) }
+    companion object { internal val BOUNDS = KLineRect(0.0, 0.0, 240.0, 160.0) }
 }

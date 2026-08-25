@@ -3,7 +3,7 @@ package com.tencent.kuiklybase.kline.indicator
 import com.tencent.kuiklybase.kline.data.KLineBar
 import kotlin.coroutines.cancellation.CancellationException
 
-class KLineIndicatorEngine(
+internal class KLineIndicatorEngine(
     private val registry: KLineExtensionRegistry,
 ) {
     private val successCache = mutableMapOf<CacheKey, KLineIndicatorResult>()

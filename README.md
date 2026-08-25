@@ -1,24 +1,57 @@
 # KuiklyKLineChart
 
-面向 Kuikly 股票详情与 AI 行情场景的跨端专业 K 线组件，延续并产品化 [KuiklyChart PR #1](https://github.com/qingfeng19491001/KuiklyChart/pull/1) 已验证的交互与展示能力。
-<img width="400" height="867" alt="kuiklyKLineChart" src="https://github.com/user-attachments/assets/8c005761-f2a9-48e0-b597-f1b30edb448f" />
+面向 Kuikly 的跨端专业 K 线组件（扩展原生 View）。提供 KMP DSL/内核，以及 Android / iOS / 鸿蒙各自独立的原生扩展 View 产物。
 
+## 产物
 
-## 接入指南
+| 层 | 坐标 / 引入方式 |
+|----|----------------|
+| KMP | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21` |
+| KMP（鸿蒙工具链） | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010` |
+| Android | `com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21` |
+| iOS | CocoaPods `KuiklyKLineChartIOS` |
+| OHOS | ohpm `@kuiklybase/kuikly-kline-chart-ohos` |
 
-普通 Kotlin/Android/iOS 坐标：
+仓库：
 
 ```kotlin
-implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21-SNAPSHOT")
+maven("https://mirrors.tencent.com/nexus/repository/maven-tencent/")
 ```
 
-HarmonyOS 使用 KBA 工具链对应坐标：
+## 1. KMP（DSL）
 
 ```kotlin
-implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010-SNAPSHOT")
+implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21")
+// 鸿蒙 build.ohos.gradle.kts:
+// implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010")
 ```
 
-Android 宿主注册：
+```kotlin
+val controller = KLineChartController()
+KLineChart(dataSource = stockDataSource, controller = controller) {
+    attr {
+        symbol("00700", "腾讯控股")
+        period(1, "day")
+        mode("full") // full | compact
+        theme("light")
+    }
+    event {
+        onVisibleRangeChange { start, end -> }
+        onBarClick { timestamp, index -> }
+        onCrosshairChange { timestamp, price -> }
+        onSignalClick { id, title, summary -> }
+        onError { code, message -> }
+    }
+}
+```
+
+公开 API 白名单：`KLineChart` / `KLineChartController` / `KLineDataSource` 族 / `KLineBar` / 指标与 Overlay 配置 / `KLineTheme` / `KLineChartMode` / `KLineSignal` / `KLinePlatformHost`。Store / Render / Interaction 等内核类型已 `internal`；加载重试通过 Host/`call` 暴露，不直接暴露 Engine。
+
+## 2. Android
+
+```kotlin
+implementation("com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21")
+```
 
 ```kotlin
 override fun registerExternalRenderView(export: IKuiklyRenderExport) {
@@ -26,58 +59,61 @@ override fun registerExternalRenderView(export: IKuiklyRenderExport) {
 }
 ```
 
-iOS 由 Objective-C/Swift 类名 `KRKLineChart` 动态发现；HarmonyOS 在 `KuiklyViewDelegate.getCustomRenderViewCreatorRegisterMapV2()` 中用同名 `KRKLineChart` 注册。仓库已提供两端宿主工程骨架，本机为 Windows 且无对应运行环境，需在 macOS/HarmonyOS 开发机完成构建和真机验收。
+## 3. iOS
 
-## 核心 API
+```ruby
+pod 'KuiklyKLineChartIOS', :git => 'https://github.com/qingfeng19491001/KuiklyKLineChart.git', :tag => '0.1.0'
+```
 
-业务代码与组件处于同一 Kuikly 进程时，优先使用真实数据源入口：
+`KRKLineChart` 类名与 `viewName` 一致，运行时自动发现，无需手动注册。Kotlin 侧 `KLCChartBridge` 随业务 KMP `shared`（依赖本库）打进 framework。
 
-```kotlin
-val controller = KLineChartController()
+## 4. 鸿蒙（OHOS）
 
-KLineChart(dataSource = stockDataSource, controller = controller) {
-    attr {
-        symbol("00700", "腾讯控股")
-        period(1, "day")
-        mode("full")
-    }
-    event {
-        onVisibleRangeChange { start, end -> }
-        onBarClick { timestamp, index -> }
-        onLoadStateChange { initial, before, after -> }
-        onOverlayClick { id -> }
-        onOverlayChange { revision -> }
-        onSignalClick { id, title, summary -> }
-    }
+```json5
+"dependencies": {
+  "@kuiklybase/kuikly-kline-chart-ohos": "0.1.0"
 }
 ```
 
-跨运行时或纯扩展 View 场景可通过 `bars(json)`、`signals(json)` 和 `config(json)` 推送序列化数据。Native View 默认不生成或写死股票数据。
+```typescript
+import { KRKLineChart } from '@kuiklybase/kuikly-kline-chart-ohos';
 
-`KLineChartController` 支持滚动到最新/时间戳、按 K 线数量平移、缩放、窗格和指标增删改、Overlay 增删改、状态导出恢复；View 侧还提供 `loadBefore()`、`loadAfter()` 与 `retryInitialLoad()`。
+getCustomRenderViewCreatorRegisterMap(): Map<string, KRRenderViewExportCreator> {
+  const map = new Map();
+  map.set(KRKLineChart.VIEW_NAME, () => new KRKLineChart());
+  return map;
+}
+```
 
-## 扩展能力
+## Demo
 
-- `FULL`：多周期、主图与双副图、坐标、平移缩放、十字线、Tooltip、Overlay 和 AI 信号。
-- `COMPACT`：复用同一内核，限制可见数量并关闭副图、坐标文字、Overlay 与手势，适合聊天回复卡片。
-- 内置指标：MA、BOLL、EXPMA、BBI、ENE、VOL、AMOUNT、MACD、KDJ、RSI、WR、BBD。
-- `KLineSignal`：BUY、SELL、RISK、INFO；组件负责绘制、命中和回调，AI 请求、真实性、解读卡与风险声明由业务页面负责。
+本仓库 `shared` + `androidApp` / `iosApp` / `ohosApp` 仅作示例，接入方式与外部工程相同。
 
-## 示例
-
-Demo 默认进入 `router`，提供三个可点页面：
-
-- `FullChartDemo`：Task 1 与 Task 2 详情承接页使用的完整专业 K 线。
-- `CompactChartDemo`：Task 2 聊天回复中的迷你行情卡片。
-- `SignalOverlayDemo`：点击 AI 信号并联动业务解读卡。
-
-Windows/Android 验证：
+- 路由页入口含 **库能力最小样例**（`MinimalLibrarySample`）：仅 DSL `KLineChart`，无 AI/行情业务壳。
+- 完整业务演示：`FullChartDemo` / `CompactChartDemo` / `SignalOverlayDemo`。
 
 ```shell
-./gradlew :KuiklyKLineChart:jsNodeTest :shared:compileCommonMainKotlinMetadata :androidApp:assembleDebug
-./gradlew :androidApp:installDebug
-adb shell monkey -p com.kuikly.kuiklyklinechart -c android.intent.category.LAUNCHER 1
+./gradlew :KuiklyKLineChart:jsNodeTest :KuiklyKLineChartAndroid:assembleRelease :androidApp:assembleDebug
 ```
+
+## 发布
+
+```shell
+# Maven Local：KMP + Android AAR
+./publish-maven.sh local
+
+# 仅 KMP / 仅 Android
+./publish-maven.sh local kmp
+./publish-maven.sh local android
+
+# 鸿蒙工具链 KMP（settings.ohos.gradle.kts，版本带 KBA）
+./publish-maven.sh local ohos-kmp
+
+# 远端（需 MAVEN_REPO_URL / MAVEN_USERNAME / MAVEN_PASSWORD）
+./publish-maven.sh remote
+```
+
+iOS 使用 CocoaPods `KuiklyKLineChartIOS`；鸿蒙使用 ohpm `@kuiklybase/kuikly-kline-chart-ohos`。
 
 ## License
 

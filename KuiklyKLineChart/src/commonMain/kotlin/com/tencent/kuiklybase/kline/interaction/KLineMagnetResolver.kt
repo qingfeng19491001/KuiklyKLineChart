@@ -7,7 +7,7 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayPoint
 import com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem
 import kotlin.math.abs
 
-object KLineMagnetResolver {
+internal object KLineMagnetResolver {
     fun resolve(
         pixelX: Double,
         pixelY: Double,

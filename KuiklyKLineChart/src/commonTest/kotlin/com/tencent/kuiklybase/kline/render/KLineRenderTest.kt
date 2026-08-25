@@ -256,5 +256,5 @@ class KLineRenderTest {
         override fun measure(text: String, textSize: Double): KLineTextSize { calls++; return KLineTextSize(text.length * textSize * .5, textSize) }
     }
 
-    companion object { val BOUNDS = KLineRect(0.0, 0.0, 240.0, 160.0) }
+    companion object { internal val BOUNDS = KLineRect(0.0, 0.0, 240.0, 160.0) }
 }

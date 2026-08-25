@@ -1,6 +1,6 @@
 package com.tencent.kuiklybase.kline.viewport
 
-object KLineViewportEngine {
+internal object KLineViewportEngine {
     fun initial(
         dataCount: Int,
         plotWidth: Double,

@@ -3,7 +3,7 @@ package com.tencent.kuiklybase.kline.data
 import com.tencent.kuiklybase.kline.store.KLineLoadPhase
 import com.tencent.kuiklybase.kline.store.KLineStore
 
-class KLineDataSession(
+internal class KLineDataSession(
     private val dataSource: KLineDataSource,
     private val store: KLineStore,
     private val initialLimit: Int = 200,

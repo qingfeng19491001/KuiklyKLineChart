@@ -6,6 +6,7 @@ target 'iosApp' do
   # Keep the native renderer ABI aligned with KUIKLY_VERSION in gradle.properties.
   pod 'OpenKuiklyIOSRender' , '~> 2.15.0'
   pod 'shared', :path => '../shared'
+  pod 'KuiklyKLineChartIOS', :path => '../'
 
   pod 'SDWebImage'
 end

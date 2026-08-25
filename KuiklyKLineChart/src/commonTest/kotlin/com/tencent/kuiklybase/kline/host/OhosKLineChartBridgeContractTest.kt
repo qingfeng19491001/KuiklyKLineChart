@@ -1,4 +1,4 @@
-package com.kuikly.kuiklyklinechart.shared
+package com.tencent.kuiklybase.kline.host
 
 import com.tencent.kuikly.core.nvi.serialization.json.JSONObject
 import com.tencent.kuiklybase.kline.controller.KLineChartController

@@ -2,7 +2,7 @@ package com.tencent.kuiklybase.kline.indicator
 
 import com.tencent.kuiklybase.kline.data.KLineBar
 
-object KLineExpmaIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineExpmaIndicator : KLineIncrementalIndicatorTemplate {
     override val name = "EXPMA"
     override val defaultParams = listOf(12.0, 50.0)
     override val series = KLineIndicatorSeries.PRICE

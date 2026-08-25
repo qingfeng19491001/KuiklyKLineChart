@@ -1,0 +1,21 @@
+{
+  "name": "@kuiklybase/kuikly-kline-chart-ohos",
+  "version": "0.1.0",
+  "description": "KuiklyKLineChart HarmonyOS native expand View (KRKLineChart)",
+  "main": "index.ets",
+  "author": "Kuikly",
+  "license": "MIT",
+  "dependencies": {
+    "@kuikly-open/render": "2.15.0"
+  },
+  "metadata": {
+    "sourceRoots": [
+      "./src/main"
+    ],
+    "debug": false
+  },
+  "compatibleSdkVersion": 12,
+  "compatibleSdkType": "OpenHarmony",
+  "obfuscated": false,
+  "modelVersion": "5.0.0"
+}

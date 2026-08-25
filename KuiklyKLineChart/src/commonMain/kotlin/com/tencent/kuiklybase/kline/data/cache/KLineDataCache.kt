@@ -13,7 +13,7 @@ import com.tencent.kuiklybase.kline.data.KLineRealtimeListener
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.data.KLineDataSource
 
-data class KLineCacheKey(val symbol: KLineSymbol, val period: KLinePeriod) {
+internal data class KLineCacheKey(val symbol: KLineSymbol, val period: KLinePeriod) {
     override fun toString(): String = "${symbol.ticker}_${period.span}_${period.unit}"
 }
 
@@ -32,7 +32,7 @@ internal data class KLineCacheEntry(
     fun touch(now: Long) { lastAccessAt = now }
 }
 
-data class KLineDataCacheStats(
+internal data class KLineDataCacheStats(
     val entries: Int,
     val totalBars: Long,
     val hits: Long,
@@ -40,7 +40,7 @@ data class KLineDataCacheStats(
     val evictions: Long,
 )
 
-class KLineDataCache internal constructor(
+internal class KLineDataCache internal constructor(
     private val maxEntries: Int,
     private val maxBarsPerEntry: Int,
     private val defaultTtlMillis: Long,

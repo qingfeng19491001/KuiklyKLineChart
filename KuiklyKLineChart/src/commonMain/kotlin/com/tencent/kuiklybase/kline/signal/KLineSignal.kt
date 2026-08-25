@@ -33,7 +33,7 @@ data class KLineSignal(
     }
 }
 
-class KLineSignalSet(signals: List<KLineSignal>) {
+internal class KLineSignalSet(signals: List<KLineSignal>) {
     val signals: List<KLineSignal> = SignalList(signals)
     private val byOverlayId: Map<String, KLineSignal>
 

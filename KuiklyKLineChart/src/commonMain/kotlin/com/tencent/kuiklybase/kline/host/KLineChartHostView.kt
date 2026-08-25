@@ -57,23 +57,30 @@ class KLineChartDsl {
     }
 }
 
+/**
+ * Canvas-host API for embedding the shared render kernel without a Kuikly expand-View.
+ */
 class KLineChartHostView(
     private val dataSource: KLineDataSource,
     private val controller: KLineChartController = KLineChartController(),
     private val onInvalidate: () -> Unit = {},
-    private val onSnapshot: (KLineStoreSnapshot) -> Unit = {},
     dsl: KLineChartDsl.() -> Unit = {},
 ) {
     private val dslConfig = KLineChartDsl().apply(dsl)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val engine: KLineChartEngine = KLineChartEngine(
+    internal val engine: KLineChartEngine = KLineChartEngine(
         dataSource = dataSource,
         controller = controller,
         onError = dslConfig.onError,
     )
+    private var onSnapshot: (KLineStoreSnapshot) -> Unit = {}
     private var currentWidth: Int = 0
     private var currentHeight: Int = 0
     private var attached = false
+
+    internal fun setSnapshotListener(listener: (KLineStoreSnapshot) -> Unit) {
+        onSnapshot = listener
+    }
 
     fun attach() {
         if (attached) return
@@ -103,12 +110,18 @@ class KLineChartHostView(
         KLineCanvasRenderer.render(plan, canvas)
     }
 
-    fun latestRenderPlan(): com.tencent.kuiklybase.kline.render.KLineRenderPlan? {
+    internal fun latestRenderPlan(): com.tencent.kuiklybase.kline.render.KLineRenderPlan? {
         if (currentWidth <= 0 || currentHeight <= 0) return null
         return engine.latestRenderPlan(KLineRect(0.0, 0.0, currentWidth.toDouble(), currentHeight.toDouble()))
     }
 
     fun onPointerEvent(event: KLinePointerEvent): KLinePointerDispatchOutcome = engine.dispatchPointerEvent(event)
+
+    fun retryInitialLoad() = engine.retryInitialLoad()
+
+    fun triggerLoadBefore() = engine.triggerLoadBefore()
+
+    fun triggerLoadAfter() = engine.triggerLoadAfter()
 
     fun dispose() {
         scope.cancel()

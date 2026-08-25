@@ -20,7 +20,7 @@ interface KLineCanvasAdapter {
     fun drawText(text: String, left: Double, top: Double, right: Double, bottom: Double, color: String, textSize: Double)
 }
 
-object KLineCanvasRenderer {
+internal object KLineCanvasRenderer {
     private val pipeline = KLineRenderPipeline()
 
     fun render(plan: KLineRenderPlan, canvas: KLineCanvasAdapter) {

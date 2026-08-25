@@ -9,7 +9,7 @@ import com.tencent.kuiklybase.kline.viewport.KLineViewportConfig
 import com.tencent.kuiklybase.kline.viewport.KLineViewportEngine
 import com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem
 
-data class KLinePointerDownRequest(
+internal data class KLinePointerDownRequest(
     val paneId: String,
     val pixelX: Double,
     val pixelY: Double,
@@ -23,7 +23,7 @@ data class KLinePointerDownRequest(
     val ordinaryClick: Boolean = true,
 )
 
-class KLineInteractionEngine(
+internal class KLineInteractionEngine(
     private val store: KLineStore,
     registry: KLineExtensionRegistry,
     private val viewportConfig: KLineViewportConfig = KLineViewportConfig(),

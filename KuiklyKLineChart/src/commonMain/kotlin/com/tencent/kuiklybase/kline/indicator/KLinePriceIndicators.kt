@@ -2,7 +2,7 @@ package com.tencent.kuiklybase.kline.indicator
 
 import com.tencent.kuiklybase.kline.data.KLineBar
 
-object KLineBbiIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineBbiIndicator : KLineIncrementalIndicatorTemplate {
     override fun finiteLookback(params: List<Double>) = params.ifEmpty { defaultParams }.maxOf(::positivePeriod)
     override val name = "BBI"
     override val defaultParams = listOf(3.0, 6.0, 12.0, 24.0)
@@ -21,7 +21,7 @@ object KLineBbiIndicator : KLineIncrementalIndicatorTemplate {
     }
 }
 
-object KLineEneIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineEneIndicator : KLineIncrementalIndicatorTemplate {
     override fun finiteLookback(params: List<Double>) = positivePeriod(params.ifEmpty { defaultParams }.first())
     override val name = "ENE"
     override val defaultParams = listOf(10.0, 11.0, 9.0)

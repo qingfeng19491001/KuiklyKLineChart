@@ -37,7 +37,7 @@ import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.viewport.KLineViewport
 import kotlin.coroutines.cancellation.CancellationException
 
-data class KLineStoreSnapshot(
+internal data class KLineStoreSnapshot(
     val symbol: KLineSymbol? = null,
     val period: KLinePeriod? = null,
     val bars: List<KLineBar> = emptyList(),
@@ -65,19 +65,19 @@ data class KLineStoreSnapshot(
     val formatters: KLineFormatters = KLineFormatters.DEFAULT,
 )
 
-enum class KLineLoadPhase {
+internal enum class KLineLoadPhase {
     IDLE,
     LOADING,
     FAILED,
 }
 
-data class KLineLoadState(
+internal data class KLineLoadState(
     val initial: KLineLoadPhase = KLineLoadPhase.IDLE,
     val before: KLineLoadPhase = KLineLoadPhase.IDLE,
     val after: KLineLoadPhase = KLineLoadPhase.IDLE,
 )
 
-class KLineStore(
+internal class KLineStore(
     private val onError: (KLineError) -> Unit = {},
     val extensionRegistry: KLineExtensionRegistry = KLineExtensionRegistry(
         templates = KLineBuiltInIndicators.templates,
@@ -821,6 +821,6 @@ internal fun interface KLineStoreSubscription {
     fun cancel()
 }
 
-fun interface KLineErrorSubscription {
+internal fun interface KLineErrorSubscription {
     fun cancel()
 }

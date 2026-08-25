@@ -3,7 +3,7 @@ package com.tencent.kuiklybase.kline.indicator
 import com.tencent.kuiklybase.kline.data.KLineBar
 import kotlin.math.sqrt
 
-object KLineBollIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineBollIndicator : KLineIncrementalIndicatorTemplate {
     override fun finiteLookback(params: List<Double>) = positivePeriod(params.ifEmpty { defaultParams }.first())
     override val name = "BOLL"
     override val defaultParams = listOf(20.0, 2.0)

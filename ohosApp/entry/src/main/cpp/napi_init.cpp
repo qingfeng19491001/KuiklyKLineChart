@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_map>
 
-using BridgeRef = libshared_kref_com_kuikly_kuiklyklinechart_shared_OhosKLineChartBridge;
+using BridgeRef = libshared_kref_com_tencent_kuiklybase_kline_host_OhosKLineChartBridge;
 
 static std::unordered_map<int32_t, BridgeRef> bridges;
 static int32_t nextBridgeHandle = 1;
@@ -68,7 +68,7 @@ static napi_value InitKuikly(napi_env env, napi_callback_info) {
 
 static napi_value CreateKLineBridge(napi_env env, napi_callback_info) {
     const int32_t handle = nextBridgeHandle++;
-    bridges.emplace(handle, SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+    bridges.emplace(handle, SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
         .OhosKLineChartBridge.OhosKLineChartBridge());
     napi_value result;
     napi_create_int32(env, handle, &result);
@@ -82,7 +82,7 @@ static napi_value SetKLineProp(napi_env env, napi_callback_info info) {
     if (bridge == nullptr) return Undefined(env);
     const auto key = StringArg(env, argv[1]);
     const auto value = StringArg(env, argv[2]);
-    const bool handled = SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+    const bool handled = SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
         .OhosKLineChartBridge.setProp(*bridge, key.c_str(), value.c_str());
     napi_value result;
     napi_get_boolean(env, handled, &result);
@@ -96,7 +96,7 @@ static napi_value CallKLine(napi_env env, napi_callback_info info) {
     if (bridge == nullptr) return Undefined(env);
     const auto method = StringArg(env, argv[1]);
     const auto params = StringArg(env, argv[2]);
-    return JsString(env, SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+    return JsString(env, SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
         .OhosKLineChartBridge.call(*bridge, method.c_str(), params.c_str()));
 }
 
@@ -109,7 +109,7 @@ static napi_value ResizeKLine(napi_env env, napi_callback_info info) {
     int32_t height = 0;
     napi_get_value_int32(env, argv[1], &width);
     napi_get_value_int32(env, argv[2], &height);
-    SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+    SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
         .OhosKLineChartBridge.resize(*bridge, width, height);
     return Undefined(env);
 }
@@ -128,7 +128,7 @@ static napi_value PointerKLine(napi_env env, napi_callback_info info) {
     napi_get_value_double(env, argv[3], &y);
     napi_get_value_double(env, argv[4], &scale);
     napi_get_value_int32(env, argv[5], &count);
-    SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+    SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
         .OhosKLineChartBridge.pointer(*bridge, kind.c_str(), x, y, scale, count);
     return Undefined(env);
 }
@@ -138,7 +138,7 @@ static napi_value RenderKLineCommands(napi_env env, napi_callback_info info) {
     if (!Args(env, info, 1, argv)) return Undefined(env);
     auto bridge = BridgeArg(env, argv[0]);
     if (bridge == nullptr) return Undefined(env);
-    return JsString(env, SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+    return JsString(env, SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
         .OhosKLineChartBridge.renderCommands(*bridge));
 }
 
@@ -147,7 +147,7 @@ static napi_value PollKLineEvents(napi_env env, napi_callback_info info) {
     if (!Args(env, info, 1, argv)) return Undefined(env);
     auto bridge = BridgeArg(env, argv[0]);
     if (bridge == nullptr) return Undefined(env);
-    return JsString(env, SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+    return JsString(env, SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
         .OhosKLineChartBridge.pollEvents(*bridge));
 }
 
@@ -158,7 +158,7 @@ static napi_value DisposeKLineBridge(napi_env env, napi_callback_info info) {
     napi_get_value_int32(env, argv[0], &handle);
     const auto found = bridges.find(handle);
     if (found != bridges.end()) {
-        SharedApi()->kotlin.root.com.kuikly.kuiklyklinechart.shared
+        SharedApi()->kotlin.root.com.tencent.kuiklybase.kline.host
             .OhosKLineChartBridge.dispose(found->second);
         bridges.erase(found);
     }

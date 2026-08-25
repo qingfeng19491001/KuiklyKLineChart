@@ -14,6 +14,7 @@ kotlin {
         androidMain.dependencies {
             implementation(project(":shared"))
             implementation(project(":KuiklyKLineChart"))
+            implementation(project(":KuiklyKLineChartAndroid"))
             implementation("com.tencent.kuikly-open:core:${providers.gradleProperty("KUIKLY_VERSION").get()}")
             implementation("com.tencent.kuikly-open:core-render-android:${providers.gradleProperty("KUIKLY_VERSION").get()}")
         }

@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
-class KLineChartEngine(
+internal class KLineChartEngine(
     val dataSource: KLineDataSource,
     val controller: KLineChartController = KLineChartController(),
     extensionRegistry: KLineExtensionRegistry = KLineExtensionRegistry.default(),

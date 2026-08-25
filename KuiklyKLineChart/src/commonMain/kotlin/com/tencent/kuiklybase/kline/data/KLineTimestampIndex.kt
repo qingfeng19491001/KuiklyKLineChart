@@ -1,13 +1,13 @@
 package com.tencent.kuiklybase.kline.data
 
 /** Binary-search helpers for lists whose timestamps are strictly increasing. */
-fun List<KLineBar>.exactTimestampIndex(timestamp: Long): Int? {
+internal fun List<KLineBar>.exactTimestampIndex(timestamp: Long): Int? {
     if (this is PersistentKLineBarList) return exactTimestampIndex(timestamp)
     val index = binarySearchBy(timestamp) { it.timestamp }
     return index.takeIf { it >= 0 }
 }
 
-fun List<KLineBar>.nearestTimestampIndex(timestamp: Long): Int? {
+internal fun List<KLineBar>.nearestTimestampIndex(timestamp: Long): Int? {
     if (this is PersistentKLineBarList) return nearestTimestampIndex(timestamp)
     if (isEmpty()) return null
     val exact = binarySearchBy(timestamp) { it.timestamp }

@@ -10,7 +10,7 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayPoint
 import com.tencent.kuiklybase.kline.store.KLineStore
 import com.tencent.kuiklybase.kline.viewport.KLineXCoordinateSystem
 
-class KLineOverlayInteractionEngine(
+internal class KLineOverlayInteractionEngine(
     private val store: KLineStore,
     private val registry: KLineExtensionRegistry,
 ) {

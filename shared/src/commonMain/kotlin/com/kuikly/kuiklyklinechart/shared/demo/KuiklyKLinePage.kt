@@ -206,6 +206,7 @@ internal class RouterPage : Pager() {
                     )
                 }
             }
+            ctx.entry("MinimalLibrarySample", "📦 库能力最小样例", 240f, Color(0xFF0F766E), Color(0xFF14B8A6), Color(0x330F766E)).invoke(this)
             ctx.entry("FullChartDemo", "📈 完整 K 线 Demo", 220f, Color(0xFF4F8FFF), Color(0xFF6C5CE7), Color(0x334F8FFF)).invoke(this)
             ctx.entry("CompactChartDemo", "💬 迷你 K 线卡片 Demo", 260f, Color(0xFF6C5CE7), Color(0xFFA29BFE), Color(0x336C5CE7)).invoke(this)
             ctx.entry("SignalOverlayDemo", "✨ AI 信号叠加 Demo", 260f, Color(0xFF00B894), Color(0xFF00CEC9), Color(0x3300B894)).invoke(this)
@@ -658,6 +659,6 @@ internal class SignalOverlayDemo : ShowcasePage() {
     }
 }
 
-private fun encodeBars(bars: List<KLineBar>): String = bars.joinToString(prefix = "[", postfix = "]") { bar ->
+internal fun encodeBars(bars: List<KLineBar>): String = bars.joinToString(prefix = "[", postfix = "]") { bar ->
     """{"timestamp":${bar.timestamp},"open":${bar.open},"high":${bar.high},"low":${bar.low},"close":${bar.close},"volume":${bar.volume},"turnover":${bar.turnover}}"""
 }

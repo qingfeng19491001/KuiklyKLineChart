@@ -4,7 +4,7 @@ import com.tencent.kuiklybase.kline.pane.KLinePaneLayout
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
 import com.tencent.kuiklybase.kline.store.KLineStore
 
-class KLinePaneResizeEngine(
+internal class KLinePaneResizeEngine(
     private val store: KLineStore,
 ) {
     fun beginResize(

@@ -12,12 +12,8 @@ class AndroidKLineCanvasAdapter(private val canvas: Canvas, private val density:
     private val paint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path: Path = Path()
 
-    // A/B 测试（C 组 batchDraw）：画笔状态签名缓存。
-    // 批量渲染路径下同样式图元连续输出，签名相同则跳过 Paint 重配置；
-    // 默认路径下签名几乎每次不同，行为与全量重配一致。
+    // Reuse paint config across consecutive same-style primitives within a frame.
     private var paintSignature: String? = null
-
-    // 颜色解析缓存，避免每图元一次字符串处理
     private val colorCache = HashMap<String, Int>()
 
     private fun parseColor(color: String): Int = colorCache.getOrPut(color) {
@@ -30,11 +26,12 @@ class AndroidKLineCanvasAdapter(private val canvas: Canvas, private val density:
         } catch (_: Throwable) { Color.GRAY }
     }
 
-    private fun Float.dp(): Float = this * density
-
-    /** 配置描边画笔；与上次签名一致时直接复用当前状态。 */
     private fun strokePaint(color: String, strokeWidth: Float, dash: List<Double>): Paint {
-        val signature = "S|$color|$strokeWidth|$dash"
+        val signature = if (dash.isEmpty()) {
+            "S|$color|$strokeWidth"
+        } else {
+            "S|$color|$strokeWidth|${dash.size}|${dash.first()}|${dash.last()}"
+        }
         if (signature == paintSignature) return paint
         paint.reset(); paint.isAntiAlias = true
         paint.style = Paint.Style.STROKE
@@ -47,7 +44,6 @@ class AndroidKLineCanvasAdapter(private val canvas: Canvas, private val density:
         return paint
     }
 
-    /** 配置填充画笔；与上次签名一致时直接复用当前状态。 */
     private fun fillPaint(color: String): Paint {
         val signature = "F|$color"
         if (signature == paintSignature) return paint

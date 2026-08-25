@@ -2,7 +2,7 @@ package com.tencent.kuiklybase.kline.indicator
 
 import com.tencent.kuiklybase.kline.data.KLineBar
 
-object KLineMacdIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineMacdIndicator : KLineIncrementalIndicatorTemplate {
     override val name = "MACD"
     override val defaultParams = listOf(12.0, 26.0, 9.0)
     override val series = KLineIndicatorSeries.OSCILLATOR
@@ -89,7 +89,7 @@ private data class MacdTailState(
     val lastDea: Double?,
 )
 
-object KLineKdjIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineKdjIndicator : KLineIncrementalIndicatorTemplate {
     override val name = "KDJ"
     override val defaultParams = listOf(9.0, 3.0, 3.0)
     override val series = KLineIndicatorSeries.OSCILLATOR
@@ -158,7 +158,7 @@ object KLineKdjIndicator : KLineIncrementalIndicatorTemplate {
     }
 }
 
-object KLineRsiIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineRsiIndicator : KLineIncrementalIndicatorTemplate {
     override val name = "RSI"
     override val defaultParams = listOf(6.0, 12.0, 24.0)
     override val series = KLineIndicatorSeries.OSCILLATOR
@@ -217,7 +217,7 @@ object KLineRsiIndicator : KLineIncrementalIndicatorTemplate {
     }
 }
 
-object KLineWrIndicator : KLineIncrementalIndicatorTemplate {
+internal object KLineWrIndicator : KLineIncrementalIndicatorTemplate {
     override fun finiteLookback(params: List<Double>) = positivePeriod(params.ifEmpty { defaultParams }.single())
     override val name = "WR"
     override val defaultParams = listOf(10.0)

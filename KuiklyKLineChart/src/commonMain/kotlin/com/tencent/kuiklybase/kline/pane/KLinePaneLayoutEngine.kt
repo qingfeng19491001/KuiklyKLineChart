@@ -2,7 +2,7 @@ package com.tencent.kuiklybase.kline.pane
 
 import com.tencent.kuiklybase.kline.layout.KLineRect
 
-data class KLinePaneLayout(
+internal data class KLinePaneLayout(
     val paneId: String,
     val rect: KLineRect,
     val visible: Boolean,
@@ -13,7 +13,7 @@ data class KLinePaneLayout(
     }
 }
 
-object KLinePaneLayoutEngine {
+internal object KLinePaneLayoutEngine {
     fun layout(
         panes: List<KLinePane>,
         bounds: KLineRect,

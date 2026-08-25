@@ -18,7 +18,6 @@ import com.kuikly.kuiklyklinechart.shared.canvas.KLineToolbar
 import com.kuikly.kuiklyklinechart.shared.canvas.KLineToolbarAction
 import com.kuikly.kuiklyklinechart.shared.router.KLineBaseDemoPage
 import com.kuikly.kuiklyklinechart.shared.router.PointerKind
-import com.tencent.kuiklybase.kline.KLineChartEngine
 import kotlin.random.Random
 
 class FlakyKLineDataSource(
@@ -90,8 +89,6 @@ class ErrorHandlePage : KLineBaseDemoPage() {
         }
     }
 
-    private val engine: KLineChartEngine get() = view.engine
-
     override fun start() {
         view.attach()
         controller.setMarket(KLineSymbol("FLAKY", "错误演示"), KLinePeriod(1, KLinePeriodUnit.DAY))
@@ -101,19 +98,19 @@ class ErrorHandlePage : KLineBaseDemoPage() {
     override fun onToolbarAction(actionId: String) {
         when (actionId) {
             "retry" -> {
-                engine.retryInitialLoad()
+                view.retryInitialLoad()
                 successCount += 1
             }
             "fail_next" -> {
                 flakySource.forceFailNext = true
             }
             "load_before" -> {
-                engine.triggerLoadBefore()
+                view.triggerLoadBefore()
                 successCount += 1
             }
             "reset" -> {
                 lastError = null; successCount = 0; failCount = 0
-                engine.triggerLoadBefore()
+                view.triggerLoadBefore()
             }
         }
     }

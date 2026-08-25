@@ -5,7 +5,7 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayPoint
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.viewport.KLineViewport
 
-enum class KLineInteractionState {
+internal enum class KLineInteractionState {
     IDLE,
     CROSSHAIR,
     PANNING,
@@ -16,9 +16,9 @@ enum class KLineInteractionState {
     RESIZING_PANE,
 }
 
-enum class KLineViewportGesture { PAN, SCALE }
+internal enum class KLineViewportGesture { PAN, SCALE }
 
-enum class KLineInteractionIntent {
+internal enum class KLineInteractionIntent {
     OVERLAY_CONTROL_POINT,
     OVERLAY_FIGURE,
     CROSSHAIR,
@@ -29,7 +29,7 @@ enum class KLineInteractionIntent {
     NONE,
 }
 
-data class KLineInteractionCandidates(
+internal data class KLineInteractionCandidates(
     val overlayControlPoint: Boolean = false,
     val overlayFigure: Boolean = false,
     val crosshair: Boolean = false,
@@ -38,7 +38,7 @@ data class KLineInteractionCandidates(
     val ordinaryClick: Boolean = false,
 )
 
-object KLineInteractionPriorityResolver {
+internal object KLineInteractionPriorityResolver {
     fun resolve(candidates: KLineInteractionCandidates): KLineInteractionIntent = when {
         candidates.overlayControlPoint -> KLineInteractionIntent.OVERLAY_CONTROL_POINT
         candidates.overlayFigure -> KLineInteractionIntent.OVERLAY_FIGURE
@@ -51,7 +51,7 @@ object KLineInteractionPriorityResolver {
     }
 }
 
-data class KLineCrosshair(
+internal data class KLineCrosshair(
     val paneId: String,
     val timestamp: Long,
     val index: Int,
@@ -64,7 +64,7 @@ data class KLineCrosshair(
     }
 }
 
-data class KLineBarSelection(
+internal data class KLineBarSelection(
     val paneId: String,
     val timestamp: Long,
     val index: Int,
@@ -77,7 +77,7 @@ data class KLineBarSelection(
     }
 }
 
-sealed interface KLineInteractionSession {
+internal sealed interface KLineInteractionSession {
     val state: KLineInteractionState
 
     data class Crosshair(val position: KLineCrosshair) : KLineInteractionSession {

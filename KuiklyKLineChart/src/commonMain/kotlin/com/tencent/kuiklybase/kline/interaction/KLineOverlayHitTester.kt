@@ -11,15 +11,15 @@ import kotlin.math.hypot
 import kotlin.math.abs
 import kotlin.math.max
 
-enum class KLineOverlayHitType { CONTROL_POINT, FIGURE }
+internal enum class KLineOverlayHitType { CONTROL_POINT, FIGURE }
 
-data class KLineOverlayHit(
+internal data class KLineOverlayHit(
     val instanceId: String,
     val type: KLineOverlayHitType,
     val pointIndex: Int? = null,
 )
 
-class KLineOverlayHitTester(
+internal class KLineOverlayHitTester(
     private val overlayEngine: KLineOverlayEngine,
 ) {
     fun hitTest(

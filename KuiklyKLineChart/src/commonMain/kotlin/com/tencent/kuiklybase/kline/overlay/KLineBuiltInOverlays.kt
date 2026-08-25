@@ -2,7 +2,7 @@ package com.tencent.kuiklybase.kline.overlay
 
 import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
 
-object KLineBuiltInOverlays {
+internal object KLineBuiltInOverlays {
     const val HORIZONTAL_LINE_NAME = "horizontal_line"
     const val VERTICAL_LINE_NAME = "vertical_line"
     const val SEGMENT_NAME = "segment"

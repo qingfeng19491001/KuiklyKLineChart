@@ -30,10 +30,21 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
-        commonMain.dependencies {
-            implementation("com.tencent.kuikly-open:core:${providers.gradleProperty("KUIKLY_VERSION").get()}")
-            implementation("com.tencent.kuikly-open:core-annotations:${providers.gradleProperty("KUIKLY_VERSION").get()}")
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+        val commonMain by getting {
+            dependencies {
+                implementation("com.tencent.kuikly-open:core:${providers.gradleProperty("KUIKLY_VERSION").get()}")
+                implementation("com.tencent.kuikly-open:core-annotations:${providers.gradleProperty("KUIKLY_VERSION").get()}")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+            }
+        }
+        val iosX64Main by getting
+        val iosArm64Main by getting
+        val iosSimulatorArm64Main by getting
+        val iosMain by creating {
+            dependsOn(commonMain)
+            iosX64Main.dependsOn(this)
+            iosArm64Main.dependsOn(this)
+            iosSimulatorArm64Main.dependsOn(this)
         }
         androidMain.dependencies {
             implementation("com.tencent.kuikly-open:core-render-android:${providers.gradleProperty("KUIKLY_VERSION").get()}")
@@ -72,5 +83,26 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+
+publishing {
+    repositories {
+        mavenLocal()
+        val repoUrl = (findProperty("mavenRepoUrl") as? String)?.takeIf { it.isNotBlank() }
+            ?: (findProperty("MAVEN_REPO_URL") as? String)?.takeIf { it.isNotBlank() }
+        if (repoUrl != null) {
+            maven {
+                url = uri(repoUrl)
+                credentials {
+                    username = (findProperty("mavenUsername") as? String)
+                        ?: (findProperty("MAVEN_USERNAME") as? String)
+                        ?: ""
+                    password = (findProperty("mavenPassword") as? String)
+                        ?: (findProperty("MAVEN_PASSWORD") as? String)
+                        ?: ""
+                }
+            }
+        }
     }
 }

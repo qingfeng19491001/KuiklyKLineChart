@@ -19,7 +19,7 @@ import com.tencent.kuiklybase.kline.viewport.KLineViewport
 import kotlin.math.ceil
 import kotlin.math.floor
 
-object KLineVisibleRangeResolver {
+internal object KLineVisibleRangeResolver {
     fun resolve(viewport: KLineViewport, itemCount: Int, overscanBars: Int = 1): KLineVisibleRange {
         require(itemCount >= 0) { "Item count must be non-negative" }
         require(overscanBars >= 0) { "Overscan must be non-negative" }
@@ -30,7 +30,7 @@ object KLineVisibleRangeResolver {
     }
 }
 
-class KLineRenderPlanner(registry: KLineExtensionRegistry) {
+internal class KLineRenderPlanner(registry: KLineExtensionRegistry) {
     private val overlayEngine = KLineOverlayEngine(registry)
 
     fun create(

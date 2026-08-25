@@ -2,11 +2,11 @@ package com.tencent.kuiklybase.kline.render
 
 import com.tencent.kuiklybase.kline.layout.KLineRect
 
-enum class KLineRenderLayer(val order: Int) { GRID(0), CANDLE(1), INDICATOR(2), PRICE_ANNOTATION(3), OVERLAY(4), AXIS(5), CROSSHAIR(6), TOOLTIP(7) }
+internal enum class KLineRenderLayer(val order: Int) { GRID(0), CANDLE(1), INDICATOR(2), PRICE_ANNOTATION(3), OVERLAY(4), AXIS(5), CROSSHAIR(6), TOOLTIP(7) }
 
-data class KLineStroke(val color: String, val width: Double, val dash: List<Double> = emptyList())
+internal data class KLineStroke(val color: String, val width: Double, val dash: List<Double> = emptyList())
 
-sealed interface KLineDrawingPrimitive {
+internal sealed interface KLineDrawingPrimitive {
     val layer: KLineRenderLayer
     data class Line(override val layer: KLineRenderLayer, val start: KLinePoint, val end: KLinePoint, val stroke: KLineStroke) : KLineDrawingPrimitive
     data class Rect(override val layer: KLineRenderLayer, val bounds: KLineRect, val fillColor: String, val stroke: KLineStroke? = null, val cornerRadius: Double = 0.0) : KLineDrawingPrimitive
@@ -18,16 +18,16 @@ sealed interface KLineDrawingPrimitive {
     data class Text(override val layer: KLineRenderLayer, val text: String, val bounds: KLineRect, val color: String, val textSize: Double) : KLineDrawingPrimitive
 }
 
-fun interface KLinePrimitiveSink { fun draw(primitive: KLineDrawingPrimitive) }
-class KLinePrimitiveListSink : KLinePrimitiveSink {
+internal fun interface KLinePrimitiveSink { fun draw(primitive: KLineDrawingPrimitive) }
+internal class KLinePrimitiveListSink : KLinePrimitiveSink {
     private val mutablePrimitives = mutableListOf<KLineDrawingPrimitive>()
     val primitives: List<KLineDrawingPrimitive> get() = frozenList(mutablePrimitives)
     override fun draw(primitive: KLineDrawingPrimitive) { mutablePrimitives += primitive }
 }
 
-fun interface KLineRenderer { fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) }
+internal fun interface KLineRenderer { fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) }
 
-class KLineGridRenderer : KLineRenderer {
+internal class KLineGridRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         val stroke = KLineStroke(plan.theme.grid.color, plan.theme.grid.lineWidth, frozenList(plan.theme.grid.lineDash))
         plan.panes.forEach { pane ->
@@ -36,7 +36,7 @@ class KLineGridRenderer : KLineRenderer {
     }
 }
 
-class KLineCandleRenderer : KLineRenderer {
+internal class KLineCandleRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         val pane = plan.panes.firstOrNull { it.kind == com.tencent.kuiklybase.kline.pane.KLinePaneKind.PRICE } ?: return
         if (plan.priceStyle == com.tencent.kuiklybase.kline.KLinePriceStyle.LINE) {
@@ -79,7 +79,7 @@ class KLineCandleRenderer : KLineRenderer {
     }
 }
 
-class KLineIndicatorRenderer : KLineRenderer {
+internal class KLineIndicatorRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         plan.indicators.forEach { series ->
             val stroke = KLineStroke(series.color, plan.theme.indicator.lineWidth)
@@ -96,7 +96,7 @@ class KLineIndicatorRenderer : KLineRenderer {
     }
 }
 
-class KLinePriceAnnotationRenderer : KLineRenderer {
+internal class KLinePriceAnnotationRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         if (!plan.features.priceAnnotations) return
         val pane = plan.panes.firstOrNull { it.kind == com.tencent.kuiklybase.kline.pane.KLinePaneKind.PRICE } ?: return
@@ -130,7 +130,7 @@ class KLinePriceAnnotationRenderer : KLineRenderer {
     }
 }
 
-class KLinePaneHeaderRenderer : KLineRenderer {
+internal class KLinePaneHeaderRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         plan.panes.forEach { pane ->
             val header = pane.headerRect ?: return@forEach
@@ -149,7 +149,7 @@ class KLinePaneHeaderRenderer : KLineRenderer {
     }
 }
 
-class KLineXAxisRenderer : KLineRenderer {
+internal class KLineXAxisRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         if (!plan.features.axisLabels || plan.bars.isEmpty() || plan.panes.isEmpty()) return
         val pricePane = plan.panes.firstOrNull { it.kind == com.tencent.kuiklybase.kline.pane.KLinePaneKind.PRICE } ?: return
@@ -174,7 +174,7 @@ class KLineXAxisRenderer : KLineRenderer {
     private fun normalizedMillis(timestamp: Long): Long = if (timestamp in -9_999_999_999L..9_999_999_999L) timestamp * 1000L else timestamp
 }
 
-class KLineOverlayRenderer : KLineRenderer {
+internal class KLineOverlayRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) { plan.overlays.forEach { figure ->
         val stroke = KLineStroke(figure.style.color, figure.style.lineWidth, frozenList(figure.style.lineDash))
         when (figure) {
@@ -185,11 +185,11 @@ class KLineOverlayRenderer : KLineRenderer {
     } }
 }
 
-data class KLineTextSize(val width: Double, val height: Double)
-fun interface KLineTextMeasurer { fun measure(text: String, textSize: Double): KLineTextSize }
-object KLineApproximateTextMeasurer : KLineTextMeasurer { override fun measure(text: String, textSize: Double) = KLineTextSize(text.length * textSize * .55, textSize) }
+internal data class KLineTextSize(val width: Double, val height: Double)
+internal fun interface KLineTextMeasurer { fun measure(text: String, textSize: Double): KLineTextSize }
+internal object KLineApproximateTextMeasurer : KLineTextMeasurer { override fun measure(text: String, textSize: Double) = KLineTextSize(text.length * textSize * .55, textSize) }
 
-class KLineRenderCaches {
+internal class KLineRenderCaches {
     internal val texts = mutableMapOf<Pair<String, Double>, KLineTextSize>()
     internal val ticks = mutableMapOf<AxisTickKey, List<AxisTick>>()
     var textHits: Int = 0; internal set
@@ -200,7 +200,7 @@ class KLineRenderCaches {
 internal data class AxisTickKey(val min: Double, val max: Double, val top: Double, val bottom: Double, val formatterHash: Int)
 internal data class AxisTick(val value: Double, val y: Double, val text: String)
 
-class KLineAxisRenderer(private val caches: KLineRenderCaches = KLineRenderCaches(), private val measurer: KLineTextMeasurer = KLineApproximateTextMeasurer) : KLineRenderer {
+internal class KLineAxisRenderer(private val caches: KLineRenderCaches = KLineRenderCaches(), private val measurer: KLineTextMeasurer = KLineApproximateTextMeasurer) : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         plan.panes.forEach { pane ->
             sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.AXIS, KLinePoint(pane.rect.right, pane.rect.top), KLinePoint(pane.rect.right, pane.rect.bottom), KLineStroke(plan.theme.axis.lineColor, 1.0)))
@@ -225,17 +225,17 @@ class KLineAxisRenderer(private val caches: KLineRenderCaches = KLineRenderCache
     }
 }
 
-class KLineCrosshairRenderer : KLineRenderer {
+internal class KLineCrosshairRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) { if (!plan.features.crosshair) return; val data = plan.crosshair ?: return; val pane = plan.panes.firstOrNull { it.id == data.paneId } ?: return; val stroke = KLineStroke(plan.theme.crosshair.lineColor, plan.theme.crosshair.lineWidth)
         sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.CROSSHAIR, KLinePoint(pane.rect.left, data.point.y), KLinePoint(pane.rect.right, data.point.y), stroke)); sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.CROSSHAIR, KLinePoint(data.point.x, plan.panes.first().rect.top), KLinePoint(data.point.x, plan.panes.last().rect.bottom), stroke))
     }
 }
 
-class KLineTooltipRenderer : KLineRenderer {
+internal class KLineTooltipRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) { if (!plan.features.tooltip) return; val tooltip = plan.tooltip ?: return; sink.draw(KLineDrawingPrimitive.Rect(KLineRenderLayer.TOOLTIP, tooltip.bounds, plan.theme.tooltip.backgroundColor, cornerRadius = plan.theme.tooltip.cornerRadius)); val lineHeight = plan.theme.tooltip.textSize + 2.0; tooltip.lines.forEachIndexed { index, line -> val top = tooltip.bounds.top + plan.theme.tooltip.padding + index * lineHeight; if (top + plan.theme.tooltip.textSize <= tooltip.bounds.bottom) sink.draw(KLineDrawingPrimitive.Text(KLineRenderLayer.TOOLTIP, line, KLineRect(tooltip.bounds.left + plan.theme.tooltip.padding, top, tooltip.bounds.right - plan.theme.tooltip.padding, top + plan.theme.tooltip.textSize), if (index == 0) plan.theme.tooltip.titleColor else plan.theme.tooltip.textColor, plan.theme.tooltip.textSize)) } }
 }
 
-class KLineRenderPipeline(
+internal class KLineRenderPipeline(
     renderers: List<KLineRenderer> = listOf(KLineGridRenderer(), KLineCandleRenderer(), KLineIndicatorRenderer(), KLinePriceAnnotationRenderer(), KLineOverlayRenderer(), KLinePaneHeaderRenderer(), KLineAxisRenderer(), KLineXAxisRenderer(), KLineCrosshairRenderer(), KLineTooltipRenderer()),
 ) {
     private val renderers: List<KLineRenderer> = frozenList(renderers)

@@ -7,13 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Long-press crosshair never activated on any host: `pointerDown` already started a `PANNING` session, and `showCrosshair` rejected non-IDLE/CROSSHAIR states. `KLineInteractionEngine` now cancels preemptable viewport sessions before taking over with CROSSHAIR; covered by `longPressPreemptsThePanThatTheSameTouchAlreadyStarted`.
+
+### Removed
+
+- Acceptance-only A/B scaffolding: `renderer`/`perfEnabled` props, `KLineABTest` page, Android `KLineRenderPerformanceTracker`, OHOS `KLinePerfTracker`, and host `batchedRenderEnabled` toggle (library still keeps `KLineCanvasRenderer.renderBatched` + unit tests).
+- Dead iOS `KRKLineChartShadow` / `hrv_createShadow` experiment (shadow measure never participated in flex layout).
+
 ### Added
 
 - Public Kuikly View bridges for pane state/order, indicator CRUD, overlay CRUD, history loading, and JSON state export/restore.
 - Data-driven `KLineChart(dataSource, controller)` binding, full lifecycle events, and thread-safe one-shot binding registry.
 - Publishable Android Native View and `registerKuiklyKLineChart()` registration helper inside the component AAR.
-- PR #1-aligned full chart controls, double-subchart layout, adaptive axes, current/high/low price annotations, compact and AI signal showcases.
-- iOS and HarmonyOS Kuikly host project skeletons plus explicit cross-machine validation commands.
+- Full chart controls, double-subchart layout, adaptive axes, current/high/low price annotations, compact and AI signal showcases.
+- iOS and HarmonyOS Kuikly host project skeletons.
 - FULL/COMPACT shared-engine presets, semantic AI signals, Kuikly JSON bars/signals props and signal-click event.
 - Kuikly Router showcases for full charts, compact cards and signal-overlay interpretation.
 

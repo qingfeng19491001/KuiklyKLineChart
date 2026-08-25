@@ -2,7 +2,7 @@ package com.tencent.kuiklybase.kline.overlay
 
 import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
 
-class KLineOverlayEngine(
+internal class KLineOverlayEngine(
     private val registry: KLineExtensionRegistry,
 ) {
     fun createFigures(instance: KLineOverlayInstance): List<KLineOverlayFigure> {

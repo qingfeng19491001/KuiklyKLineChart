@@ -4,7 +4,7 @@ import com.tencent.kuiklybase.kline.layout.KLineRect
 import kotlin.math.exp
 import kotlin.math.ln
 
-class KLineYCoordinateSystem(
+internal class KLineYCoordinateSystem(
     private val plot: KLineRect,
     private val axis: KLineYAxis,
 ) {

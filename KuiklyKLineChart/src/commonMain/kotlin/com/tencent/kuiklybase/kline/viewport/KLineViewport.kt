@@ -16,7 +16,7 @@ data class KLineViewport(
     }
 }
 
-data class KLineViewportConfig(
+internal data class KLineViewportConfig(
     val defaultBarSpace: Double = 10.0,
     val minBarSpace: Double = 2.0,
     val maxBarSpace: Double = 40.0,

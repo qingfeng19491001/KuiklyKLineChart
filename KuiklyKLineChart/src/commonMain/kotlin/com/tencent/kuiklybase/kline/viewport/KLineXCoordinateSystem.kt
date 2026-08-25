@@ -6,7 +6,7 @@ import com.tencent.kuiklybase.kline.data.nearestTimestampIndex
 import com.tencent.kuiklybase.kline.layout.KLineRect
 import kotlin.math.roundToInt
 
-class KLineXCoordinateSystem(
+internal class KLineXCoordinateSystem(
     private val plot: KLineRect,
     private val viewport: KLineViewport,
     private val bars: List<KLineBar>,

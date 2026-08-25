@@ -1,6 +1,6 @@
 package com.tencent.kuiklybase.kline.layout
 
-data class KLineRect(
+internal data class KLineRect(
     val left: Double,
     val top: Double,
     val right: Double,
