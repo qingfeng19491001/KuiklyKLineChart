@@ -105,4 +105,9 @@ publishing {
             }
         }
     }
+    publications.withType<MavenPublication>().configureEach {
+        if (providers.gradleProperty("lowercaseMavenArtifacts").orNull == "true") {
+            artifactId = artifactId.lowercase()
+        }
+    }
 }

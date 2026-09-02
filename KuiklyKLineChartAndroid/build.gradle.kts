@@ -55,7 +55,11 @@ afterEvaluate {
             create<MavenPublication>("release") {
                 from(components["release"])
                 groupId = project.group.toString()
-                artifactId = "KuiklyKLineChartAndroid"
+                artifactId = if (providers.gradleProperty("lowercaseMavenArtifacts").orNull == "true") {
+                    "kuiklyklinechartandroid"
+                } else {
+                    "KuiklyKLineChartAndroid"
+                }
                 version = project.version.toString()
             }
         }

@@ -8,9 +8,9 @@
 
 | 层 | 当前可依赖 | 官方纳入后（尚未发布） |
 |----|------------|------------------------|
-| KMP | `io.github.qingfeng19491001:KuiklyKLineChart:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21` |
+| KMP | `io.github.qingfeng19491001:kuiklyklinechart:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21` |
 | KMP（鸿蒙工具链） | 同仓库 `./publish-maven.sh github ohos-kmp` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010` |
-| Android | `io.github.qingfeng19491001:KuiklyKLineChartAndroid:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21` |
+| Android | `io.github.qingfeng19491001:kuiklyklinechartandroid:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21` |
 | iOS | CocoaPods `KuiklyKLineChartIOS`，`:tag => '0.1.0'` | 官方 pod 源 |
 | OHOS | 本仓库 `KuiklyKLineChartOhos` 路径依赖 | ohpm `@kuiklybase/kuikly-kline-chart-ohos` |
 
@@ -31,7 +31,7 @@ maven {
 ## 1. KMP（DSL）
 
 ```kotlin
-implementation("io.github.qingfeng19491001:KuiklyKLineChart:0.1.0-2.1.21")
+implementation("io.github.qingfeng19491001:kuiklyklinechart:0.1.0-2.1.21")
 ```
 
 ```kotlin
@@ -60,7 +60,7 @@ KLineChart(dataSource = stockDataSource, controller = controller) {
 ## 2. Android
 
 ```kotlin
-implementation("io.github.qingfeng19491001:KuiklyKLineChartAndroid:0.1.0-2.1.21")
+implementation("io.github.qingfeng19491001:kuiklyklinechartandroid:0.1.0-2.1.21")
 ```
 
 ```kotlin

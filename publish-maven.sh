@@ -46,6 +46,7 @@ if [[ "$TARGET" == "github" ]]; then
   export ORG_GRADLE_PROJECT_MAVEN_REPO_URL="${MAVEN_REPO_URL}"
   export ORG_GRADLE_PROJECT_MAVEN_USERNAME="${MAVEN_USERNAME}"
   export ORG_GRADLE_PROJECT_MAVEN_PASSWORD="${MAVEN_PASSWORD}"
+  export ORG_GRADLE_PROJECT_lowercaseMavenArtifacts=true
   PUBLISH_TASK="publish"
 elif [[ "$TARGET" == "remote" ]]; then
   PUBLISH_TASK="publish"
