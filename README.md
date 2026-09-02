@@ -2,28 +2,36 @@
 
 面向 Kuikly 的跨端专业 K 线组件（扩展原生 View）。提供 KMP DSL/内核，以及 Android / iOS / 鸿蒙各自独立的原生扩展 View 产物。
 
+当前对外可解析的是 **GitHub Packages 社区坐标**（`io.github.qingfeng19491001`）。`com.tencent.kuiklybase` / `@kuiklybase` 是纳入官方仓之后的目标坐标，现网还没有这些包。
+
 ## 产物
 
-| 层 | 坐标 / 引入方式 |
-|----|----------------|
-| KMP | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21` |
-| KMP（鸿蒙工具链） | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010` |
-| Android | `com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21` |
-| iOS | CocoaPods `KuiklyKLineChartIOS` |
-| OHOS | ohpm `@kuiklybase/kuikly-kline-chart-ohos` |
+| 层 | 当前可依赖 | 官方纳入后（尚未发布） |
+|----|------------|------------------------|
+| KMP | `io.github.qingfeng19491001:KuiklyKLineChart:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21` |
+| KMP（鸿蒙工具链） | 同仓库 `./publish-maven.sh github ohos-kmp` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010` |
+| Android | `io.github.qingfeng19491001:KuiklyKLineChartAndroid:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21` |
+| iOS | CocoaPods `KuiklyKLineChartIOS`，`:tag => '0.1.0'` | 官方 pod 源 |
+| OHOS | 本仓库 `KuiklyKLineChartOhos` 路径依赖 | ohpm `@kuiklybase/kuikly-kline-chart-ohos` |
 
-仓库：
+GitHub Packages 拉包需要 GitHub 账号（公开包也要 token）：
 
 ```kotlin
-maven("https://mirrors.tencent.com/nexus/repository/maven-tencent/")
+maven {
+    url = uri("https://maven.pkg.github.com/qingfeng19491001/KuiklyKLineChart")
+    credentials {
+        username = providers.gradleProperty("gpr.user").get()
+        password = providers.gradleProperty("gpr.key").get()
+    }
+}
 ```
+
+`gpr.user` 为 GitHub 用户名，`gpr.key` 为具有 `read:packages` 的 PAT。
 
 ## 1. KMP（DSL）
 
 ```kotlin
-implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21")
-// 鸿蒙 build.ohos.gradle.kts:
-// implementation("com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010")
+implementation("io.github.qingfeng19491001:KuiklyKLineChart:0.1.0-2.1.21")
 ```
 
 ```kotlin
@@ -52,7 +60,7 @@ KLineChart(dataSource = stockDataSource, controller = controller) {
 ## 2. Android
 
 ```kotlin
-implementation("com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21")
+implementation("io.github.qingfeng19491001:KuiklyKLineChartAndroid:0.1.0-2.1.21")
 ```
 
 ```kotlin
@@ -73,7 +81,7 @@ pod 'KuiklyKLineChartIOS', :git => 'https://github.com/qingfeng19491001/KuiklyKL
 
 ```json5
 "dependencies": {
-  "@kuiklybase/kuikly-kline-chart-ohos": "0.1.0"
+  "@kuiklybase/kuikly-kline-chart-ohos": "file:../KuiklyKLineChartOhos"
 }
 ```
 
@@ -101,21 +109,20 @@ getCustomRenderViewCreatorRegisterMap(): Map<string, KRRenderViewExportCreator> 
 ## 发布
 
 ```shell
-# Maven Local：KMP + Android AAR
+# Maven Local：KMP + Android AAR（默认仍用官方目标 group com.tencent.kuiklybase）
 ./publish-maven.sh local
 
-# 仅 KMP / 仅 Android
-./publish-maven.sh local kmp
-./publish-maven.sh local android
+# GitHub Packages 社区坐标 io.github.qingfeng19491001（外人可依赖）
+./publish-maven.sh github
 
 # 鸿蒙工具链 KMP（settings.ohos.gradle.kts，版本带 KBA）
-./publish-maven.sh local ohos-kmp
+./publish-maven.sh github ohos-kmp
 
-# 远端（需 MAVEN_REPO_URL / MAVEN_USERNAME / MAVEN_PASSWORD）
+# 其它远端（需 MAVEN_REPO_URL / MAVEN_USERNAME / MAVEN_PASSWORD）
 ./publish-maven.sh remote
 ```
 
-iOS 使用 CocoaPods `KuiklyKLineChartIOS`；鸿蒙使用 ohpm `@kuiklybase/kuikly-kline-chart-ohos`。
+iOS 使用 CocoaPods `KuiklyKLineChartIOS`（本仓库 git tag）。鸿蒙在官方 ohpm 开通前使用仓库内 `KuiklyKLineChartOhos`。
 
 ## 性能
 
