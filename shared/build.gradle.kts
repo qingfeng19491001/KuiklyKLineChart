@@ -21,7 +21,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":KuiklyKLineChart"))
+            api(project(":KuiklyKLineChart"))
             implementation("com.tencent.kuikly-open:core:${providers.gradleProperty("KUIKLY_VERSION").get()}")
             implementation("com.tencent.kuikly-open:core-annotations:${providers.gradleProperty("KUIKLY_VERSION").get()}")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
@@ -40,6 +40,7 @@ kotlin {
         framework {
             isStatic = true
             baseName = "shared"
+            export(project(":KuiklyKLineChart"))
         }
         license = "MIT"
         extraSpecAttributes["resources"] = "['src/commonMain/assets/**']"

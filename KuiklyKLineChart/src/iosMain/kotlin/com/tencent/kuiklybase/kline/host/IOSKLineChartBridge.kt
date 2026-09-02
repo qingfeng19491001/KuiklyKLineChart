@@ -71,8 +71,15 @@ class IOSKLineChartBridge(
     fun pointerLongPress(x: Double, y: Double) =
         host.dispatchPointer(KLinePointerEvent.LongPress(x, y))
 
+    fun claimPointerMove(deltaX: Double, deltaY: Double, pointerCount: Int): String =
+        host.claimPointerMove(deltaX, deltaY, pointerCount).name
+
+    fun resetGestureClaim() {
+        host.resetGestureClaim()
+    }
+
     fun resetViewport() {
-        host.callAsMap("resetViewport", null)
+        host.callAsMap(com.tencent.kuiklybase.kline.view.KLineChartView.METHOD_RESET_VIEWPORT, null)
     }
 
     fun paneHeaderAt(x: Double, y: Double): String? = host.paneHeaderAt(x, y)

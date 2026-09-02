@@ -249,9 +249,21 @@ struct KRKLineChartComponent {
     }
   }
 
-  /** 手势阈值仍按 vp 判定，仅在送入绘制内核时换算成物理像素。 */
+  /** 手势阈值由 Host 的 KLineGestureArbitrator 按像素判定；此处只采集 raw touch。 */
   private pointer(kind: string, x: number, y: number, scale: number, count: number): void {
     Napi.pointerKLine(this.renderView.bridgeHandle, kind, vp2px(x), vp2px(y), scale, count);
+  }
+
+  private claimPointerMove(dxVp: number, dyVp: number, count: number): string {
+    return Napi.callKLine(
+      this.renderView.bridgeHandle,
+      'claimPointerMove',
+      `${vp2px(dxVp)},${vp2px(dyVp)},${count}`
+    );
+  }
+
+  private resetGestureClaim(): void {
+    Napi.callKLine(this.renderView.bridgeHandle, 'resetGestureClaim', '');
   }
 
   private handleTouch(event: TouchEvent): void {
@@ -262,11 +274,13 @@ struct KRKLineChartComponent {
     const y = center.y;
     switch (event.type) {
       case TouchType.Down:
+        this.resetGestureClaim();
         if (points.length >= 2) {
           this.cancelLongPressTimer();
           this.pinchActive = true;
           this.horizontalGesture = true;
           this.initialPinchDistance = touchDistance(points[0], points[1]);
+          this.claimPointerMove(0, 0, points.length);
           this.pointer('cancel', x, y, 1, points.length);
           this.pointer('secondaryDown', x, y, 1, points.length);
           event.stopPropagation();
@@ -293,14 +307,16 @@ struct KRKLineChartComponent {
           this.pinchActive = true;
           this.horizontalGesture = true;
           this.initialPinchDistance = touchDistance(points[0], points[1]);
+          this.claimPointerMove(0, 0, points.length);
           this.pointer('cancel', x, y, 1, points.length);
           this.pointer('secondaryDown', x, y, 1, points.length);
         }
-        if (!this.horizontalGesture && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        const claim = this.claimPointerMove(dx, dy, points.length);
+        if (claim === 'CHART') {
           this.horizontalGesture = true;
           this.cancelLongPressTimer();
         }
-        if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) && points.length === 1) {
+        if (claim === 'PARENT' && points.length === 1) {
           this.cancelLongPressTimer();
           this.pointer('cancel', x, y, 1, 1);
           return;
@@ -326,6 +342,7 @@ struct KRKLineChartComponent {
         }
         this.pinchActive = false;
         this.initialPinchDistance = 0;
+        this.resetGestureClaim();
         this.redraw();
         break;
       case TouchType.Cancel:
@@ -333,6 +350,7 @@ struct KRKLineChartComponent {
         this.pointer('cancel', x, y, 1, points.length);
         this.pinchActive = false;
         this.initialPinchDistance = 0;
+        this.resetGestureClaim();
         this.redraw();
         break;
     }

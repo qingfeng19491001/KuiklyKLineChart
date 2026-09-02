@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Cross-platform host contract locked to `KLineChartView` prop/method/event/overlay-template constants, with Android-gold fixtures for density/pane layout, `KLinePointerEvent` gestures, load/realtime/crosshair/overlay/signal/FULL·COMPACT, and attach/detach restore. Public overlay names (`HORIZONTAL_LINE`) resolve to the engine registry.
+- `KLineGestureArbitrator` lives in the library Host; Android / iOS / OHOS shells only collect raw touches and map CHART/PARENT onto platform intercept APIs.
+- Map-style four artifacts (`KuiklyKLineChart` / Android / iOS / Ohos), unified `KLinePlatformHost`, non-SNAPSHOT coordinates, `publish-maven.sh`, and `MinimalLibrarySample`.
+
 ### Fixed
 
 - Long-press crosshair never activated on any host: `pointerDown` already started a `PANNING` session, and `showCrosshair` rejected non-IDLE/CROSSHAIR states. `KLineInteractionEngine` now cancels preemptable viewport sessions before taking over with CROSSHAIR; covered by `longPressPreemptsThePanThatTheSameTouchAlreadyStarted`.

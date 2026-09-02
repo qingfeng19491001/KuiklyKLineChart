@@ -80,20 +80,29 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
     }
 
     public fun scrollToTimestamp(timestamp: Long) {
-        performTaskWhenRenderViewDidLoad { renderView?.callMethod("scrollToTimestamp", JSONObject().apply { put("timestamp", timestamp) }.toString()) }
+        performTaskWhenRenderViewDidLoad {
+            renderView?.callMethod(METHOD_SCROLL_TO_TIMESTAMP, JSONObject().apply { put("timestamp", timestamp) }.toString())
+        }
     }
 
     public fun scrollByBars(count: Double) {
-        performTaskWhenRenderViewDidLoad { renderView?.callMethod("scrollByBars", JSONObject().apply { put("count", count) }.toString()) }
+        performTaskWhenRenderViewDidLoad {
+            renderView?.callMethod(METHOD_SCROLL_BY_BARS, JSONObject().apply { put("count", count) }.toString())
+        }
     }
 
     public fun zoomAtTimestamp(factor: Double, timestamp: Long) {
-        performTaskWhenRenderViewDidLoad { renderView?.callMethod("zoomAtTimestamp", JSONObject().apply { put("factor", factor); put("timestamp", timestamp) }.toString()) }
+        performTaskWhenRenderViewDidLoad {
+            renderView?.callMethod(
+                METHOD_ZOOM_AT_TIMESTAMP,
+                JSONObject().apply { put("factor", factor); put("timestamp", timestamp) }.toString(),
+            )
+        }
     }
 
-    public fun loadBefore() { performTaskWhenRenderViewDidLoad { renderView?.callMethod("loadBefore", null) } }
-    public fun loadAfter() { performTaskWhenRenderViewDidLoad { renderView?.callMethod("loadAfter", null) } }
-    public fun retryInitialLoad() { performTaskWhenRenderViewDidLoad { renderView?.callMethod("retryInitialLoad", null) } }
+    public fun loadBefore() { performTaskWhenRenderViewDidLoad { renderView?.callMethod(METHOD_LOAD_BEFORE, null) } }
+    public fun loadAfter() { performTaskWhenRenderViewDidLoad { renderView?.callMethod(METHOD_LOAD_AFTER, null) } }
+    public fun retryInitialLoad() { performTaskWhenRenderViewDidLoad { renderView?.callMethod(METHOD_RETRY_INITIAL_LOAD, null) } }
 
     /** Creates or replaces a pane from the documented JSON pane schema. */
     public fun setPane(json: String) = callJson(METHOD_SET_PANE, json)
@@ -149,7 +158,7 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
     /**
      * 开始绘制画线工具。
      *
-     * @param templateName 画线模板名（如 "TREND_LINE"、"HORIZONTAL_LINE"、"VERTICAL_LINE"、"TEXT"）
+     * @param templateName 画线模板名，见 [OverlayTemplate]（如 [OverlayTemplate.HORIZONTAL_LINE]）
      * @param paneId 目标窗格 ID，默认为主图 "price"
      * @param magnetMode 磁铁模式："none" / "weak" / "strong"
      */
@@ -199,10 +208,29 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
         /** Native 侧注册的组件名，全端必须一致。 */
         public const val VIEW_NAME: String = "KRKLineChart"
 
+        /* setProp keys — Host 与三端壳只认这里，禁止再解析一份 */
+        public const val PROP_BINDING_ID: String = "bindingId"
+        public const val PROP_SYMBOL: String = "symbol"
+        public const val PROP_PERIOD: String = "period"
+        public const val PROP_THEME: String = "theme"
+        public const val PROP_MODE: String = "mode"
+        public const val PROP_PRICE_STYLE: String = "priceStyle"
+        public const val PROP_BARS: String = "bars"
+        public const val PROP_SIGNALS: String = "signals"
+        public const val PROP_CONFIG: String = "config"
+        /** Host-only：壳注入一次物理像素密度，不走 DSL。 */
+        public const val PROP_DENSITY: String = "density"
+
         /* 组件方法名，与 Native 侧 call(method, params, callback) 的 method 字段对齐 */
         public const val METHOD_SCROLL_TO_LATEST: String = "scrollToLatest"
         public const val METHOD_ZOOM: String = "zoom"
         public const val METHOD_RESET_VIEWPORT: String = "resetViewport"
+        public const val METHOD_SCROLL_TO_TIMESTAMP: String = "scrollToTimestamp"
+        public const val METHOD_SCROLL_BY_BARS: String = "scrollByBars"
+        public const val METHOD_ZOOM_AT_TIMESTAMP: String = "zoomAtTimestamp"
+        public const val METHOD_LOAD_BEFORE: String = "loadBefore"
+        public const val METHOD_LOAD_AFTER: String = "loadAfter"
+        public const val METHOD_RETRY_INITIAL_LOAD: String = "retryInitialLoad"
         public const val METHOD_BEGIN_OVERLAY: String = "beginOverlay"
         public const val METHOD_CANCEL_INTERACTION: String = "cancelInteraction"
         public const val METHOD_CLEAR_CROSSHAIR: String = "clearCrosshair"
@@ -219,6 +247,41 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
         public const val METHOD_REMOVE_OVERLAY: String = "removeOverlay"
         public const val METHOD_EXPORT_STATE: String = "exportState"
         public const val METHOD_RESTORE_STATE: String = "restoreState"
+
+        internal val PROP_KEYS: Set<String> = setOf(
+            PROP_BINDING_ID, PROP_SYMBOL, PROP_PERIOD, PROP_THEME, PROP_MODE, PROP_PRICE_STYLE,
+            PROP_BARS, PROP_SIGNALS, PROP_CONFIG, PROP_DENSITY,
+        )
+
+        internal val METHOD_KEYS: Set<String> = setOf(
+            METHOD_SCROLL_TO_LATEST, METHOD_ZOOM, METHOD_RESET_VIEWPORT, METHOD_SCROLL_TO_TIMESTAMP,
+            METHOD_SCROLL_BY_BARS, METHOD_ZOOM_AT_TIMESTAMP, METHOD_LOAD_BEFORE, METHOD_LOAD_AFTER,
+            METHOD_RETRY_INITIAL_LOAD, METHOD_BEGIN_OVERLAY, METHOD_CANCEL_INTERACTION,
+            METHOD_CLEAR_CROSSHAIR, METHOD_DELETE_SELECTED_OVERLAY, METHOD_SET_PANE, METHOD_REMOVE_PANE,
+            METHOD_MOVE_PANE, METHOD_SET_PANE_STATE, METHOD_ADD_INDICATOR, METHOD_UPDATE_INDICATOR,
+            METHOD_REMOVE_INDICATOR, METHOD_CREATE_OVERLAY, METHOD_UPDATE_OVERLAY, METHOD_REMOVE_OVERLAY,
+            METHOD_EXPORT_STATE, METHOD_RESTORE_STATE,
+        )
+    }
+
+    /** Public overlay template names accepted by [beginOverlay] / [createOverlay]. */
+    public object OverlayTemplate {
+        public const val HORIZONTAL_LINE: String = "HORIZONTAL_LINE"
+        public const val VERTICAL_LINE: String = "VERTICAL_LINE"
+        public const val SEGMENT: String = "SEGMENT"
+        public const val TREND_LINE: String = "TREND_LINE"
+        public const val RAY: String = "RAY"
+        public const val PRICE_LINE: String = "PRICE_LINE"
+        public const val PARALLEL_LINES: String = "PARALLEL_LINES"
+        public const val PRICE_CHANNEL: String = "PRICE_CHANNEL"
+        public const val FIBONACCI_RETRACEMENT: String = "FIBONACCI_RETRACEMENT"
+        public const val TEXT: String = "TEXT"
+        public const val FREEHAND: String = "FREEHAND"
+
+        internal val KEYS: Set<String> = setOf(
+            HORIZONTAL_LINE, VERTICAL_LINE, SEGMENT, TREND_LINE, RAY, PRICE_LINE,
+            PARALLEL_LINES, PRICE_CHANNEL, FIBONACCI_RETRACEMENT, TEXT, FREEHAND,
+        )
     }
 }
 
@@ -230,7 +293,7 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
  */
 public class KLineChartAttr : Attr() {
 
-    internal fun binding(id: String): KLineChartAttr { "bindingId" with id; return this }
+    internal fun binding(id: String): KLineChartAttr { KLineChartView.PROP_BINDING_ID with id; return this }
 
     /**
      * 设置交易标的。
@@ -243,7 +306,7 @@ public class KLineChartAttr : Attr() {
             put("ticker", ticker)
             put("name", name)
         }
-        "symbol" with params.toString()
+        KLineChartView.PROP_SYMBOL with params.toString()
         return this
     }
 
@@ -258,7 +321,7 @@ public class KLineChartAttr : Attr() {
             put("value", value)
             put("unit", unit)
         }
-        "period" with params.toString()
+        KLineChartView.PROP_PERIOD with params.toString()
         return this
     }
 
@@ -268,31 +331,31 @@ public class KLineChartAttr : Attr() {
      * @param name "light" 或 "dark"
      */
     public fun theme(name: String): KLineChartAttr {
-        "theme" with name
+        KLineChartView.PROP_THEME with name
         return this
     }
 
     /** Selects the shared engine preset: `full` or `compact`. */
     public fun mode(name: String): KLineChartAttr {
-        "mode" with name
+        KLineChartView.PROP_MODE with name
         return this
     }
 
     /** Selects price rendering: `candle` or `line`. */
     public fun priceStyle(name: String): KLineChartAttr {
-        "priceStyle" with name
+        KLineChartView.PROP_PRICE_STYLE with name
         return this
     }
 
     /** Replaces the static/pushed candle snapshot encoded as a JSON array. */
     public fun bars(json: String): KLineChartAttr {
-        "bars" with json
+        KLineChartView.PROP_BARS with json
         return this
     }
 
     /** Replaces semantic AI signals encoded as a JSON array. */
     public fun signals(json: String): KLineChartAttr {
-        "signals" with json
+        KLineChartView.PROP_SIGNALS with json
         return this
     }
 
@@ -314,7 +377,7 @@ public class KLineChartAttr : Attr() {
      * ```
      */
     public fun config(json: String): KLineChartAttr {
-        "config" with json
+        KLineChartView.PROP_CONFIG with json
         return this
     }
 }
@@ -324,15 +387,15 @@ public class KLineChartAttr : Attr() {
  */
 public class KLineChartEvent : Event() {
 
-    public fun onVisibleRangeChange(handler: (Int, Int) -> Unit) = registerJson("onVisibleRangeChange") { handler(it.optInt("startIndex"), it.optInt("endIndex")) }
-    public fun onBarClick(handler: (Long, Int) -> Unit) = registerJson("onBarClick") { handler(it.optLong("timestamp"), it.optInt("index")) }
-    public fun onLoadStateChange(handler: (String, String, String) -> Unit) = registerJson("onLoadStateChange") { handler(it.optString("initial"), it.optString("before"), it.optString("after")) }
-    public fun onOverlayClick(handler: (String?) -> Unit) = registerJson("onOverlayClick") { handler(it.optString("id").ifBlank { null }) }
-    public fun onOverlayChange(handler: (Long) -> Unit) = registerJson("onOverlayChange") { handler(it.optLong("revision")) }
-    public fun onPeriodChange(handler: (Int, String) -> Unit) = registerJson("onPeriodChange") { handler(it.optInt("value"), it.optString("unit")) }
-    public fun onIndicatorChange(handler: (List<String>) -> Unit) = registerJson("onIndicatorChange") { handler(it.optString("ids").split(',').filter(String::isNotBlank)) }
+    public fun onVisibleRangeChange(handler: (Int, Int) -> Unit) = registerJson(EVENT_VISIBLE_RANGE_CHANGE) { handler(it.optInt("startIndex"), it.optInt("endIndex")) }
+    public fun onBarClick(handler: (Long, Int) -> Unit) = registerJson(EVENT_BAR_CLICK) { handler(it.optLong("timestamp"), it.optInt("index")) }
+    public fun onLoadStateChange(handler: (String, String, String) -> Unit) = registerJson(EVENT_LOAD_STATE_CHANGE) { handler(it.optString("initial"), it.optString("before"), it.optString("after")) }
+    public fun onOverlayClick(handler: (String?) -> Unit) = registerJson(EVENT_OVERLAY_CLICK) { handler(it.optString("id").ifBlank { null }) }
+    public fun onOverlayChange(handler: (Long) -> Unit) = registerJson(EVENT_OVERLAY_CHANGE) { handler(it.optLong("revision")) }
+    public fun onPeriodChange(handler: (Int, String) -> Unit) = registerJson(EVENT_PERIOD_CHANGE) { handler(it.optInt("value"), it.optString("unit")) }
+    public fun onIndicatorChange(handler: (List<String>) -> Unit) = registerJson(EVENT_INDICATOR_CHANGE) { handler(it.optString("ids").split(',').filter(String::isNotBlank)) }
     public fun onPaneLayoutChange(handler: (Float, Float, Float) -> Unit) {
-        register("onPaneLayoutChange") { params ->
+        register(EVENT_PANE_LAYOUT_CHANGE) { params ->
             fun number(name: String): Float = when (params) {
                 is JSONObject -> params.optDouble(name).toFloat()
                 is Map<*, *> -> (params[name] as? Number)?.toFloat() ?: 0f
@@ -343,7 +406,7 @@ public class KLineChartEvent : Event() {
     }
 
     public fun onPaneHeaderClick(handler: (String) -> Unit) {
-        register("onPaneHeaderClick") { params ->
+        register(EVENT_PANE_HEADER_CLICK) { params ->
             handler(
                 when (params) {
                     is JSONObject -> params.optString("paneId")
@@ -400,6 +463,14 @@ public class KLineChartEvent : Event() {
         public const val EVENT_OVERLAY_CHANGE: String = "onOverlayChange"
         public const val EVENT_PERIOD_CHANGE: String = "onPeriodChange"
         public const val EVENT_INDICATOR_CHANGE: String = "onIndicatorChange"
+        public const val EVENT_PANE_LAYOUT_CHANGE: String = "onPaneLayoutChange"
+        public const val EVENT_PANE_HEADER_CLICK: String = "onPaneHeaderClick"
+
+        internal val EVENT_KEYS: Set<String> = setOf(
+            EVENT_ERROR, EVENT_CROSSHAIR_CHANGE, EVENT_SIGNAL_CLICK, EVENT_VISIBLE_RANGE_CHANGE,
+            EVENT_BAR_CLICK, EVENT_LOAD_STATE_CHANGE, EVENT_OVERLAY_CLICK, EVENT_OVERLAY_CHANGE,
+            EVENT_PERIOD_CHANGE, EVENT_INDICATOR_CHANGE, EVENT_PANE_LAYOUT_CHANGE, EVENT_PANE_HEADER_CLICK,
+        )
     }
 }
 

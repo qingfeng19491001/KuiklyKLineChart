@@ -8,6 +8,7 @@ import com.tencent.kuiklybase.kline.indicator.KLineIndicatorInstance
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayConfig
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayInstance
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
+import com.tencent.kuiklybase.kline.overlay.canonicalizeOverlayTemplateName
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
 
@@ -73,7 +74,8 @@ class KLineChartController {
 
     fun createOverlay(config: KLineOverlayConfig): String {
         val id = allocateOverlayId()
-        dispatch(KLineControllerCommand.CreateOverlay(config.toInstance(id)))
+        val normalized = config.copy(templateName = canonicalizeOverlayTemplateName(config.templateName))
+        dispatch(KLineControllerCommand.CreateOverlay(normalized.toInstance(id)))
         return id
     }
 
@@ -84,7 +86,14 @@ class KLineChartController {
     ): String {
         require(name.isNotBlank()) { "Overlay template name must not be blank" }
         val id = allocateOverlayId()
-        dispatch(KLineControllerCommand.BeginOverlay(id, name, paneId, magnetMode))
+        dispatch(
+            KLineControllerCommand.BeginOverlay(
+                id,
+                canonicalizeOverlayTemplateName(name),
+                paneId,
+                magnetMode,
+            ),
+        )
         return id
     }
 
@@ -104,7 +113,8 @@ class KLineChartController {
         config: KLineOverlayConfig,
     ) {
         require(instanceId.isNotBlank()) { "Overlay instance id must not be blank" }
-        dispatch(KLineControllerCommand.UpdateOverlay(config.toInstance(instanceId)))
+        val normalized = config.copy(templateName = canonicalizeOverlayTemplateName(config.templateName))
+        dispatch(KLineControllerCommand.UpdateOverlay(normalized.toInstance(instanceId)))
     }
 
     fun removeOverlay(instanceId: String) {

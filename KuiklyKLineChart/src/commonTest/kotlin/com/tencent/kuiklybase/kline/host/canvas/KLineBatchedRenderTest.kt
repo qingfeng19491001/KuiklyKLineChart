@@ -58,8 +58,9 @@ class KLineBatchedRenderTest {
             val rawBottom = maxOf(openY, closeY)
             val bottom = if (rawBottom - top < 1.0) top + 1.0 else rawBottom
             val halfBody = bodyWidth / 2.0
-            ops += "line|${d(x)},${d(highY)},${d(x)},${d(lowY)}|$color|${d(wickWidth)}|[]"
-            ops += "rect|${d(x - halfBody)},${d(top)},${d(x + halfBody)},${d(bottom)}|$color|null|0.0|0.0"
+            // 复用 drawLine/drawRect 的格式化，避免 0.0 的字符串表示在 JVM("0.0")/JS("0") 间不一致
+            drawLine(x, highY, x, lowY, color, wickWidth, emptyList())
+            drawRect(x - halfBody, top, x + halfBody, bottom, color, null, 0.0, 0.0)
         }
 
         override fun drawText(text: String, left: Double, top: Double, right: Double, bottom: Double, color: String, textSize: Double) {

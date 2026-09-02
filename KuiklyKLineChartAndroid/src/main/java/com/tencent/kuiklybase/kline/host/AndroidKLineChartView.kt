@@ -10,6 +10,7 @@ import com.tencent.kuikly.core.render.android.export.IKuiklyRenderViewExport
 import com.tencent.kuikly.core.render.android.export.KuiklyRenderCallback
 import com.tencent.kuiklybase.kline.KLinePointerEvent
 import com.tencent.kuiklybase.kline.host.canvas.AndroidKLineCanvasAdapter
+import com.tencent.kuiklybase.kline.view.KLineChartEvent
 import com.tencent.kuiklybase.kline.view.KLineChartView
 import kotlin.math.abs
 
@@ -43,7 +44,7 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            platform.callAsMap("resetViewport", null)
+            platform.callAsMap(KLineChartView.METHOD_RESET_VIEWPORT, null)
             return true
         }
 
@@ -97,18 +98,18 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
 
     override fun setProp(propKey: String, propValue: Any): Boolean {
         when (propKey) {
-            "onError",
-            "onCrosshairChange",
-            "onSignalClick",
-            "onPaneLayoutChange",
-            "onPaneHeaderClick",
-            "onVisibleRangeChange",
-            "onBarClick",
-            "onLoadStateChange",
-            "onOverlayClick",
-            "onOverlayChange",
-            "onPeriodChange",
-            "onIndicatorChange",
+            KLineChartEvent.EVENT_ERROR,
+            KLineChartEvent.EVENT_CROSSHAIR_CHANGE,
+            KLineChartEvent.EVENT_SIGNAL_CLICK,
+            KLineChartEvent.EVENT_PANE_LAYOUT_CHANGE,
+            KLineChartEvent.EVENT_PANE_HEADER_CLICK,
+            KLineChartEvent.EVENT_VISIBLE_RANGE_CHANGE,
+            KLineChartEvent.EVENT_BAR_CLICK,
+            KLineChartEvent.EVENT_LOAD_STATE_CHANGE,
+            KLineChartEvent.EVENT_OVERLAY_CLICK,
+            KLineChartEvent.EVENT_OVERLAY_CHANGE,
+            KLineChartEvent.EVENT_PERIOD_CHANGE,
+            KLineChartEvent.EVENT_INDICATOR_CHANGE,
             -> {
                 @Suppress("UNCHECKED_CAST")
                 eventCallbacks[propKey] = propValue as KuiklyRenderCallback
@@ -159,7 +160,7 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
         val headerId = platform.paneHeaderAt(event.x.toDouble(), event.y.toDouble())
         if (event.actionMasked == MotionEvent.ACTION_DOWN &&
             headerId != null &&
-            eventCallbacks["onPaneHeaderClick"] != null
+            eventCallbacks[KLineChartEvent.EVENT_PANE_HEADER_CLICK] != null
         ) {
             pressedPaneHeaderId = headerId
             paneHeaderDownX = event.x
@@ -169,8 +170,8 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
         pressedPaneHeaderId?.let { pressedId ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_MOVE -> if (
-                    abs(event.x - paneHeaderDownX) > 12f * density ||
-                    abs(event.y - paneHeaderDownY) > 12f * density
+                    abs(event.x - paneHeaderDownX) > (KLINE_TOUCH_SLOP_VP * density).toFloat() ||
+                    abs(event.y - paneHeaderDownY) > (KLINE_TOUCH_SLOP_VP * density).toFloat()
                 ) {
                     pressedPaneHeaderId = null
                     paneHeaderGestureBecamePan = true
@@ -181,7 +182,7 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
                 }
                 MotionEvent.ACTION_UP -> {
                     if (headerId == pressedId) {
-                        eventCallbacks["onPaneHeaderClick"]?.invoke(mapOf("paneId" to pressedId))
+                        eventCallbacks[KLineChartEvent.EVENT_PANE_HEADER_CLICK]?.invoke(mapOf("paneId" to pressedId))
                     }
                     pressedPaneHeaderId = null
                 }
@@ -195,29 +196,35 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
             MotionEvent.ACTION_DOWN -> {
                 touchDownX = event.x
                 touchDownY = event.y
+                platform.resetGestureClaim()
             }
             MotionEvent.ACTION_MOVE -> {
-                val dx = abs(event.x - touchDownX)
-                val dy = abs(event.y - touchDownY)
-                if (dx > 12f * density || dy > 12f * density) {
-                    if (scaleDetector.isInProgress) {
-                        parent?.requestDisallowInterceptTouchEvent(true)
-                    } else if (dx > dy) {
-                        parent?.requestDisallowInterceptTouchEvent(true)
-                    } else {
+                val pointerCount = if (scaleDetector.isInProgress) 2 else event.pointerCount
+                when (
+                    platform.claimPointerMove(
+                        (event.x - touchDownX).toDouble(),
+                        (event.y - touchDownY).toDouble(),
+                        pointerCount,
+                    )
+                ) {
+                    KLineGestureClaim.CHART -> parent?.requestDisallowInterceptTouchEvent(true)
+                    KLineGestureClaim.PARENT -> {
                         parent?.requestDisallowInterceptTouchEvent(false)
                         platform.dispatchPointer(
                             KLinePointerEvent.Cancel(event.x.toDouble(), event.y.toDouble()),
                         )
                     }
+                    KLineGestureClaim.PENDING -> Unit
                 }
             }
             MotionEvent.ACTION_UP -> {
                 platform.dispatchPointer(KLinePointerEvent.Up(event.x.toDouble(), event.y.toDouble()))
+                platform.resetGestureClaim()
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
             MotionEvent.ACTION_CANCEL -> {
                 platform.dispatchPointer(KLinePointerEvent.Cancel(event.x.toDouble(), event.y.toDouble()))
+                platform.resetGestureClaim()
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
         }

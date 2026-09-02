@@ -23,11 +23,11 @@ internal class KLineOverlayInteractionEngine(
         magnetMode: KLineOverlayMagnetMode = KLineOverlayMagnetMode.NONE,
         draftId: String = "overlay-draft-${nextDraftId++}",
     ): String {
-        requireNotNull(registry.findOverlay(templateName)) { "Unknown overlay template: $templateName" }
+        val template = requireNotNull(registry.findOverlay(templateName)) { "Unknown overlay template: $templateName" }
         require(draftId.isNotBlank()) { "Overlay draft id must not be blank" }
         require(store.snapshot.overlayInstances.none { it.id == draftId }) { "Overlay instance id already exists: $draftId" }
         store.beginInteraction(
-            KLineInteractionSession.DrawingOverlay(draftId, templateName, paneId, magnetMode),
+            KLineInteractionSession.DrawingOverlay(draftId, template.name, paneId, magnetMode),
         )
         return draftId
     }

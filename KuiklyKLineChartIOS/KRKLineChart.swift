@@ -30,7 +30,6 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
     private var longPressFired = false
     private var pressedPaneHeaderId: String?
     private var horizontalGesture = false
-    private let gestureThreshold: CGFloat = 10
 
     // MARK: - 初始化
 
@@ -184,6 +183,7 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
         touchDownPoint = p
         longPressFired = false
         horizontalGesture = false
+        bridge?.resetGestureClaim()
         pressedPaneHeaderId = bridge?.paneHeaderAt(x: Double(p.x) * s, y: Double(p.y) * s)
         if event?.allTouches?.count ?? 1 < 2 {
             pinchConsumedTouches = false
@@ -199,14 +199,17 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
         let s = Double(contentScaleFactor)
         let count = Int32(event?.allTouches?.count ?? 1)
         if count >= 2 || isPinching { return }
-        let dx = abs(p.x - touchDownPoint.x)
-        let dy = abs(p.y - touchDownPoint.y)
-        if count == 1, max(dx, dy) > gestureThreshold {
-            if dy > dx {
-                pressedPaneHeaderId = nil
-                bridge?.pointerCancel(x: Double(p.x) * s, y: Double(p.y) * s)
-                return
-            }
+        let claim = bridge?.claimPointerMove(
+            deltaX: Double(p.x - touchDownPoint.x) * s,
+            deltaY: Double(p.y - touchDownPoint.y) * s,
+            pointerCount: Int32(count)
+        ) ?? "PENDING"
+        if claim == "PARENT" {
+            pressedPaneHeaderId = nil
+            bridge?.pointerCancel(x: Double(p.x) * s, y: Double(p.y) * s)
+            return
+        }
+        if claim == "CHART" {
             horizontalGesture = true
             pressedPaneHeaderId = nil
         }
@@ -227,6 +230,7 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
             return
         }
         bridge?.pointerUp(x: Double(p.x) * s, y: Double(p.y) * s)
+        bridge?.resetGestureClaim()
         pressedPaneHeaderId = nil
         lastPinchScale = 1.0
         setNeedsDisplay()
@@ -238,6 +242,7 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
         let p = touch.location(in: self)
         let s = Double(contentScaleFactor)
         bridge?.pointerCancel(x: Double(p.x) * s, y: Double(p.y) * s)
+        bridge?.resetGestureClaim()
         lastPinchScale = 1.0
         setNeedsDisplay()
     }
@@ -251,6 +256,7 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
             pinchConsumedTouches = true
             lastPinchScale = 1.0
             pressedPaneHeaderId = nil
+            _ = bridge?.claimPointerMove(deltaX: 0, deltaY: 0, pointerCount: 2)
             bridge?.pointerCancel(x: Double(p.x) * s, y: Double(p.y) * s)
             bridge?.pointerSecondaryDown(x: Double(p.x) * s, y: Double(p.y) * s)
         case .changed:
@@ -259,10 +265,12 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
                                 scaleFactor: lastPinchScale, pointerCount: 2)
         case .ended:
             bridge?.pointerUp(x: Double(p.x) * s, y: Double(p.y) * s)
+            bridge?.resetGestureClaim()
             isPinching = false
             lastPinchScale = 1.0
         case .cancelled, .failed:
             bridge?.pointerCancel(x: Double(p.x) * s, y: Double(p.y) * s)
+            bridge?.resetGestureClaim()
             isPinching = false
             lastPinchScale = 1.0
         default:

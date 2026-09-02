@@ -5,12 +5,14 @@ import com.tencent.kuiklybase.kline.data.KLinePeriod
 import com.tencent.kuiklybase.kline.data.KLinePeriodUnit
 import com.tencent.kuiklybase.kline.data.KLineSymbol
 import com.tencent.kuiklybase.kline.data.StaticKLineDataSource
+import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
 import com.kuikly.kuiklyklinechart.shared.KLineChartView
 import com.kuikly.kuiklyklinechart.shared.canvas.KLineCanvasAdapter
 import com.kuikly.kuiklyklinechart.shared.canvas.KLineToolbar
 import com.kuikly.kuiklyklinechart.shared.canvas.KLineToolbarAction
 import com.kuikly.kuiklyklinechart.shared.router.KLineBaseDemoPage
 import com.kuikly.kuiklyklinechart.shared.router.PointerKind
+import com.tencent.kuiklybase.kline.view.KLineChartView as LibraryKLineChartView
 
 class OverlayDrawPage : KLineBaseDemoPage() {
     override val title: String = "画线 Overlay 演示"
@@ -37,10 +39,10 @@ class OverlayDrawPage : KLineBaseDemoPage() {
 
     override fun onToolbarAction(actionId: String) {
         when (actionId) {
-            "trend" -> controller.beginOverlay("TREND_LINE", "price", magnetMode = com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode.STRONG)
-            "hline" -> controller.beginOverlay("HORIZONTAL_LINE", "price", magnetMode = com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode.STRONG)
-            "vline" -> controller.beginOverlay("VERTICAL_LINE", "price", magnetMode = com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode.NONE)
-            "text" -> controller.beginOverlay("TEXT", "price")
+            "trend" -> controller.beginOverlay(LibraryKLineChartView.OverlayTemplate.TREND_LINE, "price", magnetMode = KLineOverlayMagnetMode.STRONG)
+            "hline" -> controller.beginOverlay(LibraryKLineChartView.OverlayTemplate.HORIZONTAL_LINE, "price", magnetMode = KLineOverlayMagnetMode.STRONG)
+            "vline" -> controller.beginOverlay(LibraryKLineChartView.OverlayTemplate.VERTICAL_LINE, "price", magnetMode = KLineOverlayMagnetMode.NONE)
+            "text" -> controller.beginOverlay(LibraryKLineChartView.OverlayTemplate.TEXT, "price")
             "delete" -> controller.deleteSelectedOverlay()
             "cancel" -> controller.cancelInteraction()
         }

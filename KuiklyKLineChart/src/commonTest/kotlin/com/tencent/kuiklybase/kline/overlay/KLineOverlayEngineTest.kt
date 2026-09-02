@@ -34,6 +34,19 @@ class KLineOverlayEngineTest {
     }
 
     @Test
+    fun publicDslOverlayNamesResolveToBuiltInTemplates() {
+        val registry = KLineBuiltInOverlays.registry()
+        assertEquals("horizontal_line", registry.findOverlay("HORIZONTAL_LINE")!!.name)
+        assertEquals("vertical_line", registry.findOverlay("VERTICAL_LINE")!!.name)
+        assertEquals("trend_line", registry.findOverlay("TREND_LINE")!!.name)
+        assertEquals("text_annotation", registry.findOverlay("TEXT")!!.name)
+        assertEquals("text_annotation", registry.findOverlay("text_annotation")!!.name)
+        assertEquals("MyOverlay", canonicalizeOverlayTemplateName("MyOverlay"))
+        registry.registerOverlay(overlayTemplate("MyOverlay"))
+        assertEquals("MyOverlay", registry.findOverlay("MyOverlay")!!.name)
+    }
+
+    @Test
     fun builtInsExposeTheCompleteStableTemplateSetAndKnownGeometry() {
         assertEquals(
             listOf(

@@ -2,7 +2,7 @@ import UIKit
 import shared
 import CoreGraphics
 
-final class CGContextCanvasAdapter: NSObject, KKLCKLineCanvasAdapter {
+final class CGContextCanvasAdapter: NSObject, KLineCanvasAdapter {
     private let ctx: CGContext
     private let scale: Double
 

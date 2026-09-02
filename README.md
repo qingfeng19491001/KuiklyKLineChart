@@ -47,6 +47,8 @@ KLineChart(dataSource = stockDataSource, controller = controller) {
 
 公开 API 白名单：`KLineChart` / `KLineChartController` / `KLineDataSource` 族 / `KLineBar` / 指标与 Overlay 配置 / `KLineTheme` / `KLineChartMode` / `KLineSignal` / `KLinePlatformHost`。Store / Render / Interaction 等内核类型已 `internal`；加载重试通过 Host/`call` 暴露，不直接暴露 Engine。
 
+三端只认 `KLineChartView` 的 `PROP_*` / `METHOD_*`、`KLineChartEvent.EVENT_*` 与 `KLineChartView.OverlayTemplate`。`density` 由原生壳注入一次；viewport / pane 在 `KLinePlatformHost` 按像素计算（Android 金标）。手势统一为 `KLinePointerEvent`。画线模板同时接受 DSL 名（`HORIZONTAL_LINE`）与引擎名（`horizontal_line`）。
+
 ## 2. Android
 
 ```kotlin
@@ -114,6 +116,12 @@ getCustomRenderViewCreatorRegisterMap(): Map<string, KRRenderViewExportCreator> 
 ```
 
 iOS 使用 CocoaPods `KuiklyKLineChartIOS`；鸿蒙使用 ohpm `@kuiklybase/kuikly-kline-chart-ohos`。
+
+## 性能
+
+库内保留 `KLineCanvasRenderer.renderBatched`（同图元、少画笔切换）。不对外暴露 `perfEnabled` / renderer A/B 桩。经验基线（OHOS 热启动实测）：单帧 draw 约 0–3ms；掉帧率接近 0%。接入方以「交互跟手、无持续掉帧」为验收即可。
+
+页面退出时 Android `onDetachedFromWindow`、iOS `willMove(toWindow:)` / `deinit`、OHOS `aboutToDisappear` 会 `detach`/`dispose` Host，避免 Bridge 泄漏。
 
 ## License
 

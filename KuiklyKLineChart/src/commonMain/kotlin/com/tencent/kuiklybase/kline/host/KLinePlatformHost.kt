@@ -25,6 +25,7 @@ import com.tencent.kuiklybase.kline.overlay.KLineOverlayConfig
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayFigureStyle
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayMagnetMode
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayPoint
+import com.tencent.kuiklybase.kline.overlay.canonicalizeOverlayTemplateName
 import com.tencent.kuiklybase.kline.pane.KLinePane
 import com.tencent.kuiklybase.kline.pane.KLinePaneKind
 import com.tencent.kuiklybase.kline.pane.KLinePaneState
@@ -36,13 +37,18 @@ import com.tencent.kuiklybase.kline.signal.KLineSignal
 import com.tencent.kuiklybase.kline.signal.KLineSignalType
 import com.tencent.kuiklybase.kline.store.KLineStoreSnapshot
 import com.tencent.kuiklybase.kline.view.KLineChartBindingRegistry
+import com.tencent.kuiklybase.kline.view.KLineChartEvent
+import com.tencent.kuiklybase.kline.view.KLineChartView
 import com.tencent.kuiklybase.kline.viewport.KLineViewport
 import kotlin.math.ceil
 import kotlin.math.floor
 
+/** Pane-header hit strip width in vp; Host converts to pixels via [KLinePlatformHost.density]. */
+internal const val PANE_HEADER_HIT_WIDTH_VP = 76.0
+
 /**
- * Unified expand-View host runtime for the K-line chart.
- * OHOS uses [queueEvents]=true and polls via [pollEvents]; Android/iOS use [onEvent] immediately.
+ * Unified expand-View host runtime. Viewport and pane layout are computed in pixel space (Android gold).
+ * Shells inject [KLineChartView.PROP_DENSITY] once. OHOS queues events and polls via [pollEvents].
  */
 public class KLinePlatformHost(
     private val onInvalidate: () -> Unit = {},
@@ -51,6 +57,7 @@ public class KLinePlatformHost(
 ) {
     public var density: Double = 1.0
 
+    private val gestureArbitrator = KLineGestureArbitrator()
     private var controller = KLineChartController()
     private var symbol = KLineSymbol("00700", "Demo Stock")
     private var period = KLinePeriod(1, KLinePeriodUnit.DAY)
@@ -89,7 +96,7 @@ public class KLinePlatformHost(
     ) {
         addDefaultIndicators()
         onError { error ->
-            emit("onError", mapOf("code" to error.code.name, "message" to error.message))
+            emit(KLineChartEvent.EVENT_ERROR, mapOf("code" to error.code.name, "message" to error.message))
         }
     }.also { view ->
         // Must bind before attach(); snapshotFlow starts emitting in attach().
@@ -100,7 +107,7 @@ public class KLinePlatformHost(
             if (crosshair != lastCrosshair) {
                 lastCrosshair = crosshair
                 emit(
-                    "onCrosshairChange",
+                    KLineChartEvent.EVENT_CROSSHAIR_CHANGE,
                     if (crosshair == null) emptyMap() else mapOf(
                         "timestamp" to crosshair.timestamp,
                         "price" to crosshair.value,
@@ -116,12 +123,12 @@ public class KLinePlatformHost(
     }
 
     fun notifyEventListenerBound(event: String) {
-        if (event == "onError") {
+        if (event == KLineChartEvent.EVENT_ERROR) {
             hasErrorListener = true
             pendingBridgeError?.let(::emitBridgeError)
             pendingBridgeError = null
         }
-        if (event == "onPaneLayoutChange") {
+        if (event == KLineChartEvent.EVENT_PANE_LAYOUT_CHANGE) {
             clearPaneLayoutCache()
             onInvalidate()
         }
@@ -129,61 +136,61 @@ public class KLinePlatformHost(
 
     fun setProp(propKey: String, propValue: String): Boolean = try {
         when (propKey) {
-            "bindingId" -> {
+            KLineChartView.PROP_BINDING_ID -> {
                 KLineChartBindingRegistry.take(propValue)?.let { binding ->
                     replaceDataSource(binding.dataSource, binding.controller)
                 } ?: emitBridgeError("Unknown or expired bindingId")
                 true
             }
-            "symbol" -> {
+            KLineChartView.PROP_SYMBOL -> {
                 val value = JSONObject(propValue)
                 symbol = KLineSymbol(value.optString("ticker"), value.optString("name"))
                 controller.setMarket(symbol, period)
                 true
             }
-            "period" -> {
+            KLineChartView.PROP_PERIOD -> {
                 val value = JSONObject(propValue)
                 period = KLinePeriod(value.optInt("value", 1), periodUnit(value.optString("unit")))
                 controller.setMarket(symbol, period)
                 true
             }
-            "theme" -> {
+            KLineChartView.PROP_THEME -> {
                 configuredTheme = if (propValue == "dark") KLineTheme.DARK else KLineTheme.LIGHT
                 controller.setTheme(configuredTheme)
                 true
             }
-            "mode" -> {
+            KLineChartView.PROP_MODE -> {
                 configuredMode = if (propValue.equals("compact", true)) KLineChartMode.COMPACT else KLineChartMode.FULL
                 innerView.engine.setMode(configuredMode)
                 onInvalidate()
                 true
             }
-            "priceStyle" -> {
+            KLineChartView.PROP_PRICE_STYLE -> {
                 configuredPriceStyle = if (propValue.equals("line", true)) KLinePriceStyle.LINE else KLinePriceStyle.CANDLE
                 innerView.engine.setPriceStyle(configuredPriceStyle)
                 onInvalidate()
                 true
             }
-            "bars" -> {
-                runBridgeUpdate("bars") { replaceBars(parseBars(propValue)) }
+            KLineChartView.PROP_BARS -> {
+                runBridgeUpdate(KLineChartView.PROP_BARS) { replaceBars(parseBars(propValue)) }
                 true
             }
-            "signals" -> {
-                runBridgeUpdate("signals") {
+            KLineChartView.PROP_SIGNALS -> {
+                runBridgeUpdate(KLineChartView.PROP_SIGNALS) {
                     configuredSignals = parseSignals(propValue)
                     innerView.engine.setSignals(configuredSignals)
                     onInvalidate()
                 }
                 true
             }
-            "config" -> {
-                runBridgeUpdate("config") {
+            KLineChartView.PROP_CONFIG -> {
+                runBridgeUpdate(KLineChartView.PROP_CONFIG) {
                     applyConfig(JSONObject(propValue))
                     configuredConfig = propValue
                 }
                 true
             }
-            "density" -> {
+            KLineChartView.PROP_DENSITY -> {
                 density = propValue.toDoubleOrNull()?.takeIf { it > 0.0 } ?: 1.0
                 true
             }
@@ -209,50 +216,50 @@ public class KLinePlatformHost(
             var handled = true
             val value = if (params.isNullOrBlank()) JSONObject() else JSONObject(params)
             val result: Map<String, Any?> = when (method) {
-                "scrollToLatest" -> { controller.scrollToLatest(); emptyMap() }
-                "zoom" -> { controller.zoom(value.optDouble("factor", 1.0)); emptyMap() }
-                "scrollToTimestamp" -> { controller.scrollToTimestamp(value.optLong("timestamp")); emptyMap() }
-                "scrollByBars" -> { controller.scrollByBars(value.optDouble("count")); emptyMap() }
-                "zoomAtTimestamp" -> {
+                KLineChartView.METHOD_SCROLL_TO_LATEST -> { controller.scrollToLatest(); emptyMap() }
+                KLineChartView.METHOD_ZOOM -> { controller.zoom(value.optDouble("factor", 1.0)); emptyMap() }
+                KLineChartView.METHOD_SCROLL_TO_TIMESTAMP -> { controller.scrollToTimestamp(value.optLong("timestamp")); emptyMap() }
+                KLineChartView.METHOD_SCROLL_BY_BARS -> { controller.scrollByBars(value.optDouble("count")); emptyMap() }
+                KLineChartView.METHOD_ZOOM_AT_TIMESTAMP -> {
                     controller.zoomAtTimestamp(value.optDouble("factor", 1.0), value.optLong("timestamp"))
                     emptyMap()
                 }
-                "loadBefore" -> { innerView.triggerLoadBefore(); emptyMap() }
-                "loadAfter" -> { innerView.triggerLoadAfter(); emptyMap() }
-                "retryInitialLoad" -> { innerView.retryInitialLoad(); emptyMap() }
-                "resetViewport" -> { controller.resetViewport(); emptyMap() }
-                "beginOverlay" -> {
+                KLineChartView.METHOD_LOAD_BEFORE -> { innerView.triggerLoadBefore(); emptyMap() }
+                KLineChartView.METHOD_LOAD_AFTER -> { innerView.triggerLoadAfter(); emptyMap() }
+                KLineChartView.METHOD_RETRY_INITIAL_LOAD -> { innerView.retryInitialLoad(); emptyMap() }
+                KLineChartView.METHOD_RESET_VIEWPORT -> { controller.resetViewport(); emptyMap() }
+                KLineChartView.METHOD_BEGIN_OVERLAY -> {
                     controller.beginOverlay(
-                        value.optString("templateName"),
+                        canonicalizeOverlayTemplateName(value.optString("templateName")),
                         value.optString("paneId", "price"),
                         magnetMode(value.optString("magnetMode")),
                     )
                     emptyMap()
                 }
-                "cancelInteraction" -> { controller.cancelInteraction(); emptyMap() }
-                "clearCrosshair" -> { controller.clearCrosshair(); emptyMap() }
-                "deleteSelectedOverlay" -> { controller.deleteSelectedOverlay(); emptyMap() }
-                "setPane" -> { controller.setPane(parsePane(value)); emptyMap() }
-                "removePane" -> { controller.removePane(value.optString("paneId")); emptyMap() }
-                "movePane" -> { controller.movePane(value.optString("paneId"), value.optInt("index", 0)); emptyMap() }
-                "setPaneState" -> {
+                KLineChartView.METHOD_CANCEL_INTERACTION -> { controller.cancelInteraction(); emptyMap() }
+                KLineChartView.METHOD_CLEAR_CROSSHAIR -> { controller.clearCrosshair(); emptyMap() }
+                KLineChartView.METHOD_DELETE_SELECTED_OVERLAY -> { controller.deleteSelectedOverlay(); emptyMap() }
+                KLineChartView.METHOD_SET_PANE -> { controller.setPane(parsePane(value)); emptyMap() }
+                KLineChartView.METHOD_REMOVE_PANE -> { controller.removePane(value.optString("paneId")); emptyMap() }
+                KLineChartView.METHOD_MOVE_PANE -> { controller.movePane(value.optString("paneId"), value.optInt("index", 0)); emptyMap() }
+                KLineChartView.METHOD_SET_PANE_STATE -> {
                     controller.setPaneState(
                         value.optString("paneId"),
                         KLinePaneState.valueOf(value.optString("state", "normal").uppercase()),
                     )
                     emptyMap()
                 }
-                "addIndicator" -> { controller.addIndicator(parseIndicator(value)); emptyMap() }
-                "updateIndicator" -> { controller.updateIndicator(parseIndicator(value)); emptyMap() }
-                "removeIndicator" -> { controller.removeIndicator(value.optString("id")); emptyMap() }
-                "createOverlay" -> mapOf("id" to controller.createOverlay(parseOverlayConfig(value)))
-                "updateOverlay" -> {
+                KLineChartView.METHOD_ADD_INDICATOR -> { controller.addIndicator(parseIndicator(value)); emptyMap() }
+                KLineChartView.METHOD_UPDATE_INDICATOR -> { controller.updateIndicator(parseIndicator(value)); emptyMap() }
+                KLineChartView.METHOD_REMOVE_INDICATOR -> { controller.removeIndicator(value.optString("id")); emptyMap() }
+                KLineChartView.METHOD_CREATE_OVERLAY -> mapOf("id" to controller.createOverlay(parseOverlayConfig(value)))
+                KLineChartView.METHOD_UPDATE_OVERLAY -> {
                     controller.updateOverlay(value.optString("id"), parseOverlayConfig(value))
                     emptyMap()
                 }
-                "removeOverlay" -> { controller.removeOverlay(value.optString("id")); emptyMap() }
-                "exportState" -> stateToMap(controller.exportState())
-                "restoreState" -> { controller.restoreState(parseState(value)); emptyMap() }
+                KLineChartView.METHOD_REMOVE_OVERLAY -> { controller.removeOverlay(value.optString("id")); emptyMap() }
+                KLineChartView.METHOD_EXPORT_STATE -> stateToMap(controller.exportState())
+                KLineChartView.METHOD_RESTORE_STATE -> { controller.restoreState(parseState(value)); emptyMap() }
                 else -> {
                     handled = false
                     emptyMap()
@@ -285,16 +292,23 @@ public class KLinePlatformHost(
         val outcome = innerView.onPointerEvent(event)
         if (outcome is KLinePointerDispatchOutcome.SignalClick) {
             val signal = outcome.signal
-            emit("onSignalClick", mapOf("id" to signal.id, "title" to signal.title, "summary" to signal.summary))
+            emit(KLineChartEvent.EVENT_SIGNAL_CLICK, mapOf("id" to signal.id, "title" to signal.title, "summary" to signal.summary))
         }
         onInvalidate()
         return outcome
     }
 
+    fun claimPointerMove(deltaX: Double, deltaY: Double, pointerCount: Int): KLineGestureClaim =
+        gestureArbitrator.move(deltaX, deltaY, pointerCount, KLINE_TOUCH_SLOP_VP * density.coerceAtLeast(0.0001))
+
+    fun resetGestureClaim() {
+        gestureArbitrator.reset()
+    }
+
     fun pointer(kind: String, x: Double, y: Double, scale: Double, count: Int) {
         if (kind == "tap") {
             paneHeaderAt(x, y)?.let { paneId ->
-                emit("onPaneHeaderClick", mapOf("paneId" to paneId))
+                emit(KLineChartEvent.EVENT_PANE_HEADER_CLICK, mapOf("paneId" to paneId))
                 return
             }
         }
@@ -312,7 +326,7 @@ public class KLinePlatformHost(
     }
 
     fun paneHeaderAt(x: Double, y: Double): String? {
-        if (x !in 0.0..(76.0 * density)) return null
+        if (x !in 0.0..(PANE_HEADER_HIT_WIDTH_VP * density)) return null
         return innerView.latestRenderPlan()?.panes.orEmpty().firstOrNull { pane ->
             val header = pane.headerRect ?: return@firstOrNull false
             y in header.top..header.bottom
@@ -333,6 +347,7 @@ public class KLinePlatformHost(
         JSONArray().apply { queuedEvents.forEach { put(JSONObject(it)) } }.toString().also { queuedEvents.clear() }
 
     fun detach(): KLineChartState? {
+        resetGestureClaim()
         detachedState = runCatching { controller.exportState() }.getOrNull()
         innerView.dispose()
         return detachedState
@@ -358,6 +373,7 @@ public class KLinePlatformHost(
     }
 
     fun dispose() {
+        resetGestureClaim()
         innerView.dispose()
         queuedEvents.clear()
     }
@@ -374,7 +390,7 @@ public class KLinePlatformHost(
         if (tops != lastPaneHeaderTops) {
             lastPaneHeaderTops = tops
             emit(
-                "onPaneLayoutChange",
+                KLineChartEvent.EVENT_PANE_LAYOUT_CHANGE,
                 mapOf(
                     "priceTop" to (tops.getOrNull(0) ?: 0.0),
                     "firstTop" to (tops.getOrNull(1) ?: 0.0),
@@ -411,7 +427,7 @@ public class KLinePlatformHost(
     private fun dispatchSnapshotEvents(previous: KLineStoreSnapshot?, current: KLineStoreSnapshot) {
         if (previous?.viewport != current.viewport) current.viewport?.let { viewport ->
             emit(
-                "onVisibleRangeChange",
+                KLineChartEvent.EVENT_VISIBLE_RANGE_CHANGE,
                 mapOf(
                     "startIndex" to floor(viewport.startIndex).toInt(),
                     "endIndex" to ceil(viewport.endIndex).toInt(),
@@ -419,11 +435,11 @@ public class KLinePlatformHost(
             )
         }
         if (previous?.clickSelection != current.clickSelection) current.clickSelection?.let { selected ->
-            emit("onBarClick", mapOf("timestamp" to selected.timestamp, "index" to selected.index))
+            emit(KLineChartEvent.EVENT_BAR_CLICK, mapOf("timestamp" to selected.timestamp, "index" to selected.index))
         }
         if (previous?.loadState != current.loadState) {
             emit(
-                "onLoadStateChange",
+                KLineChartEvent.EVENT_LOAD_STATE_CHANGE,
                 mapOf(
                     "initial" to current.loadState.initial.name.lowercase(),
                     "before" to current.loadState.before.name.lowercase(),
@@ -432,16 +448,16 @@ public class KLinePlatformHost(
             )
         }
         if (previous?.selectedOverlayId != current.selectedOverlayId) {
-            emit("onOverlayClick", mapOf("id" to current.selectedOverlayId))
+            emit(KLineChartEvent.EVENT_OVERLAY_CLICK, mapOf("id" to current.selectedOverlayId))
         }
         if (previous?.overlayRevision != current.overlayRevision) {
-            emit("onOverlayChange", mapOf("revision" to current.overlayRevision))
+            emit(KLineChartEvent.EVENT_OVERLAY_CHANGE, mapOf("revision" to current.overlayRevision))
         }
         if (previous?.period != current.period) current.period?.let { value ->
-            emit("onPeriodChange", mapOf("value" to value.span, "unit" to value.unit.name.lowercase()))
+            emit(KLineChartEvent.EVENT_PERIOD_CHANGE, mapOf("value" to value.span, "unit" to value.unit.name.lowercase()))
         }
         if (previous?.indicatorRevision != current.indicatorRevision) {
-            emit("onIndicatorChange", mapOf("ids" to current.indicatorInstances.joinToString(",") { it.id }))
+            emit(KLineChartEvent.EVENT_INDICATOR_CHANGE, mapOf("ids" to current.indicatorInstances.joinToString(",") { it.id }))
         }
     }
 
@@ -459,7 +475,7 @@ public class KLinePlatformHost(
     }
 
     private fun emitBridgeError(message: String) {
-        emit("onError", mapOf("code" to "INVALID_ARGUMENT", "message" to message))
+        emit(KLineChartEvent.EVENT_ERROR, mapOf("code" to "INVALID_ARGUMENT", "message" to message))
     }
 
     private fun emit(name: String, payload: Map<String, Any?>) {
@@ -579,7 +595,7 @@ public class KLinePlatformHost(
             json.keys().forEach { key -> extendData[key] = json.optString(key) }
         }
         return KLineOverlayConfig(
-            templateName = value.optString("templateName"),
+            templateName = canonicalizeOverlayTemplateName(value.optString("templateName")),
             groupId = value.optString("groupId").ifBlank { null },
             paneId = value.optString("paneId", "price"),
             points = points,

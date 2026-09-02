@@ -1,6 +1,7 @@
 package com.tencent.kuiklybase.kline.indicator
 
 import com.tencent.kuiklybase.kline.overlay.KLineOverlayTemplate
+import com.tencent.kuiklybase.kline.overlay.canonicalizeOverlayTemplateName
 
 class KLineExtensionRegistry(
     templates: Iterable<KLineIndicatorTemplate> = emptyList(),
@@ -48,7 +49,8 @@ class KLineExtensionRegistry(
         overlayRevision++
     }
 
-    fun findOverlay(name: String): KLineOverlayTemplate? = overlays[name]
+    fun findOverlay(name: String): KLineOverlayTemplate? =
+        overlays[name] ?: overlays[canonicalizeOverlayTemplateName(name)]
 
     fun overlayTemplates(): List<KLineOverlayTemplate> = overlays.values.toList()
 }
