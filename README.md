@@ -2,31 +2,23 @@
 
 面向 Kuikly 的跨端专业 K 线组件（扩展原生 View）。提供 KMP DSL/内核，以及 Android / iOS / 鸿蒙各自独立的原生扩展 View 产物。
 
-当前对外可解析的是 **GitHub Packages 社区坐标**（`io.github.qingfeng19491001`）。`com.tencent.kuiklybase` / `@kuiklybase` 是纳入官方仓之后的目标坐标，现网还没有这些包。
+当前对外可解析的是 **GitHub Pages 上的公开 Maven**（不用账号密码）。`com.tencent.kuiklybase` / `@kuiklybase` 是纳入官方仓之后的目标坐标，现网还没有这些包。
 
 ## 产物
 
 | 层 | 当前可依赖 | 官方纳入后（尚未发布） |
 |----|------------|------------------------|
 | KMP | `io.github.qingfeng19491001:kuiklyklinechart:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.1.21` |
-| KMP（鸿蒙工具链） | 同仓库 `./publish-maven.sh github ohos-kmp` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010` |
+| KMP（鸿蒙工具链） | 同仓库 `./publish-maven.sh pages ohos-kmp` | `com.tencent.kuiklybase:KuiklyKLineChart:0.1.0-2.0.21-KBA-010` |
 | Android | `io.github.qingfeng19491001:kuiklyklinechartandroid:0.1.0-2.1.21` | `com.tencent.kuiklybase:KuiklyKLineChartAndroid:0.1.0-2.1.21` |
 | iOS | CocoaPods `KuiklyKLineChartIOS`，`:tag => '0.1.0'` | 官方 pod 源 |
 | OHOS | 本仓库 `KuiklyKLineChartOhos` 路径依赖 | ohpm `@kuiklybase/kuikly-kline-chart-ohos` |
 
-GitHub Packages 拉包需要 GitHub 账号（公开包也要 token）：
-
 ```kotlin
-maven {
-    url = uri("https://maven.pkg.github.com/qingfeng19491001/KuiklyKLineChart")
-    credentials {
-        username = providers.gradleProperty("gpr.user").get()
-        password = providers.gradleProperty("gpr.key").get()
-    }
-}
+maven("https://qingfeng19491001.github.io/KuiklyKLineChart")
+implementation("io.github.qingfeng19491001:kuiklyklinechart:0.1.0-2.1.21")
+implementation("io.github.qingfeng19491001:kuiklyklinechartandroid:0.1.0-2.1.21")
 ```
-
-`gpr.user` 为 GitHub 用户名，`gpr.key` 为具有 `read:packages` 的 PAT。
 
 ## 1. KMP（DSL）
 
@@ -112,11 +104,11 @@ getCustomRenderViewCreatorRegisterMap(): Map<string, KRRenderViewExportCreator> 
 # Maven Local：KMP + Android AAR（默认仍用官方目标 group com.tencent.kuiklybase）
 ./publish-maven.sh local
 
-# GitHub Packages 社区坐标 io.github.qingfeng19491001（外人可依赖）
-./publish-maven.sh github
+# GitHub Pages 公开 Maven（别人拉包不需要账号密码）
+./publish-maven.sh pages
 
 # 鸿蒙工具链 KMP（settings.ohos.gradle.kts，版本带 KBA）
-./publish-maven.sh github ohos-kmp
+./publish-maven.sh pages ohos-kmp
 
 # 其它远端（需 MAVEN_REPO_URL / MAVEN_USERNAME / MAVEN_PASSWORD）
 ./publish-maven.sh remote

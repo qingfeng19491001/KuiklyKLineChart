@@ -94,13 +94,17 @@ publishing {
         if (repoUrl != null) {
             maven {
                 url = uri(repoUrl)
-                credentials {
-                    username = (findProperty("mavenUsername") as? String)
-                        ?: (findProperty("MAVEN_USERNAME") as? String)
-                        ?: ""
-                    password = (findProperty("mavenPassword") as? String)
-                        ?: (findProperty("MAVEN_PASSWORD") as? String)
-                        ?: ""
+                val user = (findProperty("mavenUsername") as? String)
+                    ?: (findProperty("MAVEN_USERNAME") as? String)
+                    ?: ""
+                val pass = (findProperty("mavenPassword") as? String)
+                    ?: (findProperty("MAVEN_PASSWORD") as? String)
+                    ?: ""
+                if (user.isNotBlank() && pass.isNotBlank()) {
+                    credentials {
+                        username = user
+                        password = pass
+                    }
                 }
             }
         }

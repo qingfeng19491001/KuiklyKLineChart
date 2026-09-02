@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-TARGET="${1:-local}"          # local | github | remote
+TARGET="${1:-local}"          # local | pages | github | remote
 SCOPE="${2:-all}"             # all | kmp | android | ohos-kmp
 KOTLIN_VERSION="${KOTLIN_VERSION:-2.1.21}"
 BASE_VERSION="${BASE_VERSION:-0.1.0}"
@@ -33,8 +33,56 @@ fill_github_credentials() {
 export ORG_GRADLE_PROJECT_MAVEN_VERSION="${BASE_VERSION}-${KOTLIN_VERSION}"
 export ORG_GRADLE_PROJECT_GROUP_ID="${GROUP_ID:-com.tencent.kuiklybase}"
 
+use_community_coordinates() {
+  export GROUP_ID="${GITHUB_GROUP_ID}"
+  export ORG_GRADLE_PROJECT_GROUP_ID="${GITHUB_GROUP_ID}"
+  export ORG_GRADLE_PROJECT_lowercaseMavenArtifacts=true
+}
+
+push_github_pages() {
+  local src="$1"
+  local wt="$ROOT/build/gh-pages-worktree"
+  rm -rf "$wt"
+  mkdir -p "$src"
+  if git show-ref --verify --quiet refs/heads/gh-pages || git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+    git fetch origin gh-pages 2>/dev/null || true
+    git worktree add "$wt" gh-pages 2>/dev/null || git worktree add "$wt" origin/gh-pages
+  else
+    git worktree add --detach "$wt"
+    git -C "$wt" checkout --orphan gh-pages
+    git -C "$wt" rm -rf . >/dev/null 2>&1 || true
+  fi
+  rsync -a --delete --exclude '.git' "$src/" "$wt/"
+  cat > "$wt/index.html" <<EOF
+<!doctype html><meta charset="utf-8">
+<title>KuiklyKLineChart Maven</title>
+<p>Public Maven repo (no credentials):</p>
+<pre>maven("https://${GITHUB_MAVEN_OWNER}.github.io/${GITHUB_MAVEN_REPO}")</pre>
+<p><code>io.github.${GITHUB_MAVEN_OWNER}:kuiklyklinechart:${BASE_VERSION}-${KOTLIN_VERSION}</code></p>
+EOF
+  git -C "$wt" add -A
+  if git -C "$wt" diff --cached --quiet; then
+    echo "GitHub Pages Maven repo unchanged"
+  else
+    git -C "$wt" -c user.name="$(git log -1 --format='%an')" -c user.email="$(git log -1 --format='%ae')" \
+      commit -m "Publish Maven ${ORG_GRADLE_PROJECT_GROUP_ID}:${ORG_GRADLE_PROJECT_MAVEN_VERSION}"
+    git -C "$wt" push -u origin gh-pages
+  fi
+  git worktree remove --force "$wt"
+}
+
 PUBLISH_TASK="publishToMavenLocal"
-if [[ "$TARGET" == "github" ]]; then
+if [[ "$TARGET" == "pages" ]]; then
+  PAGES_DIR="$ROOT/build/github-pages-maven"
+  rm -rf "$PAGES_DIR"
+  mkdir -p "$PAGES_DIR"
+  use_community_coordinates
+  export MAVEN_REPO_URL="file://${PAGES_DIR}"
+  export ORG_GRADLE_PROJECT_MAVEN_REPO_URL="${MAVEN_REPO_URL}"
+  MAVEN_USERNAME=""
+  MAVEN_PASSWORD=""
+  PUBLISH_TASK="publish"
+elif [[ "$TARGET" == "github" ]]; then
   fill_github_credentials
   if [[ -z "${MAVEN_USERNAME:-}" || -z "${MAVEN_PASSWORD:-}" ]]; then
     echo "GitHub Packages needs MAVEN_USERNAME/MAVEN_PASSWORD, GITHUB_TOKEN, or a git credential for github.com" >&2
@@ -83,9 +131,14 @@ case "$SCOPE" in
     echo "Optional OHOS KMP Maven: $0 $TARGET ohos-kmp"
     ;;
   *)
-    echo "Usage: $0 [local|github|remote] [all|kmp|android|ohos-kmp]" >&2
+    echo "Usage: $0 [local|pages|github|remote] [all|kmp|android|ohos-kmp]" >&2
     exit 1
     ;;
 esac
+
+if [[ "$TARGET" == "pages" ]]; then
+  echo "==> pushing GitHub Pages Maven repo"
+  push_github_pages "$PAGES_DIR"
+fi
 
 echo "==> done"
