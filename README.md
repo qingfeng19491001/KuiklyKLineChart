@@ -2,7 +2,7 @@
 
 面向 Kuikly 的跨端专业 K 线组件（扩展原生 View）。提供 KMP DSL/内核，以及 Android / iOS / 鸿蒙各自独立的原生扩展 View 产物。
 
-当前对外可解析的是 **GitHub Pages 上的公开 Maven**（不用账号密码）。`com.tencent.kuiklybase` / `@kuiklybase` 是纳入官方仓之后的目标坐标，现网还没有这些包。
+<img width="300" height="670" alt="00924e4f4cb5cc042f0a391f388207b8" src="https://github.com/user-attachments/assets/5631a233-39a1-46f4-920b-04dc578c7845" />
 
 ## 产物
 
