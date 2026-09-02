@@ -1,0 +1,344 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.github.qingfeng19491001",
+    "module": "kuiklyklinechart",
+    "version": "0.1.0-2.1.21",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "metadataApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core-annotations",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.8.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "KuiklyKLineChart-metadata-0.1.0-2.1.21.jar",
+          "url": "kuiklyklinechart-0.1.0-2.1.21.jar",
+          "size": 79516,
+          "sha512": "d13051e8094a4798066de5c5124f19a4c498d6bc0c08915a96c1c67c045473fed2d47bb80000c8b1126b8b7b2d40b3b0bae87ba9b3243b8fb48a25939b291520",
+          "sha256": "eeca1fcf4f1cd3eedde081fd10f66037e5130189347d870afbc51d8b202d3ed3",
+          "sha1": "38d612f7fcd03ffeae9b0e81b3ea5cd6438c4231",
+          "md5": "c74507f814fe3ed64797fdd21c8f7ff9"
+        }
+      ]
+    },
+    {
+      "name": "metadataSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "files": [
+        {
+          "name": "KuiklyKLineChart-kotlin-0.1.0-2.1.21-sources.jar",
+          "url": "kuiklyklinechart-0.1.0-2.1.21-sources.jar",
+          "size": 112688,
+          "sha512": "e2d8213295f99ee457880d0b07bd5d301d637e5afbf757f123bf95f9abb617a88bd43453f1905490ffed9e3e83581a347266e9d87d5910d04d916bdd23427569",
+          "sha256": "af0eeeafe271308c3fedd75ca4ec2a6a2e239d9c15967848b3546a4a6105b9c8",
+          "sha1": "bcb6cf088061d0fa3c812f2a194e32159d7e90e2",
+          "md5": "d712b03ea550ac484ebb05afe7781656"
+        }
+      ]
+    },
+    {
+      "name": "releaseApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-android/0.1.0-2.1.21/kuiklyklinechart-android-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-android",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "releaseRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-android/0.1.0-2.1.21/kuiklyklinechart-android-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-android",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "releaseSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-android/0.1.0-2.1.21/kuiklyklinechart-android-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-android",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosArm64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iosarm64/0.1.0-2.1.21/kuiklyklinechart-iosarm64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iosarm64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iosarm64/0.1.0-2.1.21/kuiklyklinechart-iosarm64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iosarm64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosArm64MetadataElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iosarm64/0.1.0-2.1.21/kuiklyklinechart-iosarm64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iosarm64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iossimulatorarm64/0.1.0-2.1.21/kuiklyklinechart-iossimulatorarm64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iossimulatorarm64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iossimulatorarm64/0.1.0-2.1.21/kuiklyklinechart-iossimulatorarm64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iossimulatorarm64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iossimulatorarm64/0.1.0-2.1.21/kuiklyklinechart-iossimulatorarm64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iossimulatorarm64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosX64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iosx64/0.1.0-2.1.21/kuiklyklinechart-iosx64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iosx64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iosx64/0.1.0-2.1.21/kuiklyklinechart-iosx64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iosx64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "iosX64MetadataElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-iosx64/0.1.0-2.1.21/kuiklyklinechart-iosx64-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-iosx64",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "jsApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-js/0.1.0-2.1.21/kuiklyklinechart-js-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-js",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "jsRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-js/0.1.0-2.1.21/kuiklyklinechart-js-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-js",
+        "version": "0.1.0-2.1.21"
+      }
+    },
+    {
+      "name": "jsSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "available-at": {
+        "url": "../../kuiklyklinechart-js/0.1.0-2.1.21/kuiklyklinechart-js-0.1.0-2.1.21.module",
+        "group": "io.github.qingfeng19491001",
+        "module": "kuiklyklinechart-js",
+        "version": "0.1.0-2.1.21"
+      }
+    }
+  ]
+}

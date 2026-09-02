@@ -1,0 +1,90 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.github.qingfeng19491001",
+    "module": "kuiklyklinechartandroid",
+    "version": "0.1.0-2.1.21",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "io.github.qingfeng19491001",
+          "module": "kuiklyklinechart",
+          "version": {
+            "requires": "0.1.0-2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.1.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kuiklyklinechartandroid-0.1.0-2.1.21.aar",
+          "url": "kuiklyklinechartandroid-0.1.0-2.1.21.aar",
+          "size": 12717,
+          "sha512": "ea0cd2a4a4f498b6ec2d82fb7efcca4e3d1ff0f01317cf8000f1e30d878fb2a6c49ecabb05c2f22f470b7342f448181ba870ba60aba81ef2504cb48f3f969ef4",
+          "sha256": "aaac28d3ec32b0c45a5d593653502064cb6f86b754ec5d61f3f72b8d207a28e1",
+          "sha1": "10df73565c934c6999b8f112ae618b1348d4c682",
+          "md5": "a49ed9a007cda7f4f04ec96f5d54e4ec"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "io.github.qingfeng19491001",
+          "module": "kuiklyklinechart",
+          "version": {
+            "requires": "0.1.0-2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.1.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kuiklyklinechartandroid-0.1.0-2.1.21.aar",
+          "url": "kuiklyklinechartandroid-0.1.0-2.1.21.aar",
+          "size": 12717,
+          "sha512": "ea0cd2a4a4f498b6ec2d82fb7efcca4e3d1ff0f01317cf8000f1e30d878fb2a6c49ecabb05c2f22f470b7342f448181ba870ba60aba81ef2504cb48f3f969ef4",
+          "sha256": "aaac28d3ec32b0c45a5d593653502064cb6f86b754ec5d61f3f72b8d207a28e1",
+          "sha1": "10df73565c934c6999b8f112ae618b1348d4c682",
+          "md5": "a49ed9a007cda7f4f04ec96f5d54e4ec"
+        }
+      ]
+    }
+  ]
+}

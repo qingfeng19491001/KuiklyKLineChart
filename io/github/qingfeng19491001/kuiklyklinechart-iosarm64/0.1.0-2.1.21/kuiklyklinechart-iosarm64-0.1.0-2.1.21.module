@@ -1,0 +1,146 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kuiklyklinechart/0.1.0-2.1.21/kuiklyklinechart-0.1.0-2.1.21.module",
+    "group": "io.github.qingfeng19491001",
+    "module": "kuiklyklinechart",
+    "version": "0.1.0-2.1.21",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "iosArm64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core-annotations",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.8.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "KuiklyKLineChart-iosArm64Main-0.1.0-2.1.21.klib",
+          "url": "kuiklyklinechart-iosarm64-0.1.0-2.1.21.klib",
+          "size": 866607,
+          "sha512": "d2649a4c3c1dd2abe604482bd223738285b5cadc4fd6665a72f2dcbf9ae31d7e6d9b83da8405fd4f01c3687a60f9c8a40ee88b765cc914480397ceb70d9a7c92",
+          "sha256": "ee6fa1e2e42345f37229906edcc2101632ccb3c00b84c78cbd1eb6a2ed39e903",
+          "sha1": "3cbe39146d4f6419a6ca058ca1fa26874e9b842a",
+          "md5": "fbb40e77184a1bd33a3f50076408ecc8"
+        }
+      ]
+    },
+    {
+      "name": "iosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "files": [
+        {
+          "name": "KuiklyKLineChart-iosarm64-0.1.0-2.1.21-sources.jar",
+          "url": "kuiklyklinechart-iosarm64-0.1.0-2.1.21-sources.jar",
+          "size": 113118,
+          "sha512": "8bdfd650c8be15f78b84fef9c8bf0d10f38611a1a2d0ec27e1e4de8a4fa579c2e0377b28a9620d93a0b96dd366cdbd4e2c9be4a25ce748f009ea73b10127101a",
+          "sha256": "aca40df18ef1cf05477a970f7fbb479ca34bcf08c2dfc9ab57a28921da71108e",
+          "sha1": "2882fac0fdcd96c0aca822ac4ec11dee90912dc9",
+          "md5": "cae13856215c036cffa042af7e10d2a3"
+        }
+      ]
+    },
+    {
+      "name": "iosArm64MetadataElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core-annotations",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.8.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "KuiklyKLineChart-iosarm64-0.1.0-2.1.21-metadata.jar",
+          "url": "kuiklyklinechart-iosarm64-0.1.0-2.1.21-metadata.jar",
+          "size": 3389,
+          "sha512": "3fa248daf5bcb63e7f9c0ba31cda7b4aa94c428acb32a76714d6d2ca629da5b0fabf2255e85b0981f86c4a900197d11eabf67abf749a66fc6bacd8f2918b9b60",
+          "sha256": "b4a8e88c5ce3bab3ae9f991b943ca48ca7465c48d0dd8008205e99c438017972",
+          "sha1": "848532f82d37fcb2e824a196355c1cc148287507",
+          "md5": "8657ddb20c677328dcacd37d9722537f"
+        }
+      ]
+    }
+  ]
+}

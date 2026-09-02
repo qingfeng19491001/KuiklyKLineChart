@@ -1,0 +1,137 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kuiklyklinechart/0.1.0-2.1.21/kuiklyklinechart-0.1.0-2.1.21.module",
+    "group": "io.github.qingfeng19491001",
+    "module": "kuiklyklinechart",
+    "version": "0.1.0-2.1.21",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "jsApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-dom-api-compat",
+          "version": {
+            "requires": "2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.1.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "KuiklyKLineChart-js-0.1.0-2.1.21.klib",
+          "url": "kuiklyklinechart-js-0.1.0-2.1.21.klib",
+          "size": 859720,
+          "sha512": "c50aee997e4707b0096e0ba2b197a2a7d4a1bf64c173af78aca32926c5dcaa7ccf5f9e22deb92d70d9b4494f9d817a842e6255b3984f7fa6596ba1bc42f8c4a5",
+          "sha256": "be3c4ba7d4ff06a83c602be7b9851662f1263bd52d35f92609d859daeb72b9cc",
+          "sha1": "396b7a76255aae3ed4d04e16ed343b2a776b5ce2",
+          "md5": "0cbb3eab4652a2777a598a42bd729519"
+        }
+      ]
+    },
+    {
+      "name": "jsRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-dom-api-compat",
+          "version": {
+            "requires": "2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "com.tencent.kuikly-open",
+          "module": "core-annotations",
+          "version": {
+            "requires": "2.15.0-2.1.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.8.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "KuiklyKLineChart-js-0.1.0-2.1.21.klib",
+          "url": "kuiklyklinechart-js-0.1.0-2.1.21.klib",
+          "size": 859720,
+          "sha512": "c50aee997e4707b0096e0ba2b197a2a7d4a1bf64c173af78aca32926c5dcaa7ccf5f9e22deb92d70d9b4494f9d817a842e6255b3984f7fa6596ba1bc42f8c4a5",
+          "sha256": "be3c4ba7d4ff06a83c602be7b9851662f1263bd52d35f92609d859daeb72b9cc",
+          "sha1": "396b7a76255aae3ed4d04e16ed343b2a776b5ce2",
+          "md5": "0cbb3eab4652a2777a598a42bd729519"
+        }
+      ]
+    },
+    {
+      "name": "jsSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "files": [
+        {
+          "name": "KuiklyKLineChart-js-0.1.0-2.1.21-sources.jar",
+          "url": "kuiklyklinechart-js-0.1.0-2.1.21-sources.jar",
+          "size": 111124,
+          "sha512": "0822b46cbbcfd9f8b9b9951302b5b1e80bb787e5abb656528de8bdb40f05a6e16147a3ac7545a323f7c6452154a86eeb649cd92e1fe8ba558300443a75399d8f",
+          "sha256": "8a6806d77ba1f1ecee82921455e9ef491fe997d508313f85c7b51962b4106c41",
+          "sha1": "9c77077016954a2578e3dd2522845eb338b82806",
+          "md5": "d4f3bcab471c4f9abaff9af1247127ba"
+        }
+      ]
+    }
+  ]
+}
