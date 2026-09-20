@@ -126,6 +126,7 @@ class KLineHostContractTest {
             """{"paneId":"price","index":0,"state":"normal"}"""
         KLineChartView.METHOD_REMOVE_INDICATOR, KLineChartView.METHOD_REMOVE_OVERLAY, KLineChartView.METHOD_UPDATE_OVERLAY ->
             """{"id":"missing"}"""
+        KLineChartView.METHOD_REMOVE_OVERLAY_GROUP -> """{"groupId":"missing"}"""
         KLineChartView.METHOD_CREATE_OVERLAY ->
             """{"templateName":"${KLineChartView.OverlayTemplate.HORIZONTAL_LINE}","paneId":"price","points":[{"timestamp":0,"value":10}]}"""
         else -> "{}"

@@ -10,13 +10,32 @@ object KLineBuiltInIndicators {
         KLineExpmaIndicator,
         KLineBbiIndicator,
         KLineEneIndicator,
+        KLineSmaIndicator,
+        KLineEmaIndicator,
+        KLineSarIndicator,
         KLineVolumeIndicator,
         KLineAmountIndicator,
+        KLineObvIndicator,
         KLineMacdIndicator,
         KLineKdjIndicator,
         KLineRsiIndicator,
         KLineWrIndicator,
         KLineBbdIndicator,
+        KLineCciIndicator,
+        KLineDmiIndicator,
+        KLineBiasIndicator,
+        KLineRocIndicator,
+        KLineBrarIndicator,
+        KLineCrIndicator,
+        KLineDmaIndicator,
+        KLineEmvIndicator,
+        KLineMtmIndicator,
+        KLinePsyIndicator,
+        KLineTrixIndicator,
+        KLineVrIndicator,
+        KLineAoIndicator,
+        KLinePvtIndicator,
+        KLineAvpIndicator,
     )
 
     @JvmStatic
@@ -43,6 +62,44 @@ object KLineBuiltInIndicators {
     val WR: KLineIndicatorTemplate get() = requireByName("WR")
     @JvmStatic
     val BBD: KLineIndicatorTemplate get() = requireByName("BBD")
+    @JvmStatic
+    val SMA: KLineIndicatorTemplate get() = requireByName("SMA")
+    @JvmStatic
+    val EMA: KLineIndicatorTemplate get() = requireByName("EMA")
+    @JvmStatic
+    val SAR: KLineIndicatorTemplate get() = requireByName("SAR")
+    @JvmStatic
+    val OBV: KLineIndicatorTemplate get() = requireByName("OBV")
+    @JvmStatic
+    val CCI: KLineIndicatorTemplate get() = requireByName("CCI")
+    @JvmStatic
+    val DMI: KLineIndicatorTemplate get() = requireByName("DMI")
+    @JvmStatic
+    val BIAS: KLineIndicatorTemplate get() = requireByName("BIAS")
+    @JvmStatic
+    val ROC: KLineIndicatorTemplate get() = requireByName("ROC")
+    @JvmStatic
+    val BRAR: KLineIndicatorTemplate get() = requireByName("BRAR")
+    @JvmStatic
+    val CR: KLineIndicatorTemplate get() = requireByName("CR")
+    @JvmStatic
+    val DMA: KLineIndicatorTemplate get() = requireByName("DMA")
+    @JvmStatic
+    val EMV: KLineIndicatorTemplate get() = requireByName("EMV")
+    @JvmStatic
+    val MTM: KLineIndicatorTemplate get() = requireByName("MTM")
+    @JvmStatic
+    val PSY: KLineIndicatorTemplate get() = requireByName("PSY")
+    @JvmStatic
+    val TRIX: KLineIndicatorTemplate get() = requireByName("TRIX")
+    @JvmStatic
+    val VR: KLineIndicatorTemplate get() = requireByName("VR")
+    @JvmStatic
+    val AO: KLineIndicatorTemplate get() = requireByName("AO")
+    @JvmStatic
+    val PVT: KLineIndicatorTemplate get() = requireByName("PVT")
+    @JvmStatic
+    val AVP: KLineIndicatorTemplate get() = requireByName("AVP")
 
     private fun requireByName(name: String): KLineIndicatorTemplate =
         templates.firstOrNull { it.name == name } ?: error("Built-in indicator not found: $name")

@@ -91,8 +91,10 @@ internal class KLineChartRuntime(
             is KLineControllerCommand.CreateOverlay -> store.addOverlay(command.instance)
             is KLineControllerCommand.UpdateOverlay -> store.updateOverlay(command.instance)
             is KLineControllerCommand.RemoveOverlay -> store.removeOverlay(command.instanceId)
+            is KLineControllerCommand.RemoveOverlayGroup -> store.removeOverlayGroup(command.groupId)
             is KLineControllerCommand.BeginOverlay -> interactionEngine.overlay.beginOverlay(
                 command.templateName, command.paneId, command.magnetMode, command.draftId,
+                command.groupId, command.locked,
             )
             KLineControllerCommand.CancelInteraction -> interactionEngine.cancelInteraction()
             KLineControllerCommand.ClearCrosshair -> interactionEngine.clearCrosshair()

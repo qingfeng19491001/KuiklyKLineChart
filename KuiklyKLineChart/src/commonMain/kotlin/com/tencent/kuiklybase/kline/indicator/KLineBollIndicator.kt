@@ -56,6 +56,9 @@ internal fun lineFigure(key: String, values: List<Double?>) =
 internal fun barFigure(key: String, values: List<Double?>) =
     KLineIndicatorFigureResult(key, KLineIndicatorFigureType.BAR, values)
 
+internal fun pointFigure(key: String, values: List<Double?>) =
+    KLineIndicatorFigureResult(key, KLineIndicatorFigureType.POINT, values)
+
 internal inline fun combine(
     first: List<Double?>,
     second: List<Double?>,

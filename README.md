@@ -34,6 +34,7 @@ KLineChart(dataSource = stockDataSource, controller = controller) {
         period(1, "day")
         mode("full") // full | compact
         theme("light")
+        priceStyle("candle") // candle | candle_hollow | candle_up_stroke | candle_down_stroke | ohlc | line | area
     }
     event {
         onVisibleRangeChange { start, end -> }

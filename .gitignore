@@ -6,6 +6,10 @@ local.properties
 **/build/
 kotlin-js-store/
 node_modules/
+oh_modules/
+.hvigor/
+.tmp-verify/
+.workbuddy/
 Pods/
 *.xcuserstate
 **/xcuserdata/

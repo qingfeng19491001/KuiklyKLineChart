@@ -24,6 +24,10 @@ internal object KLineCanvasRenderer {
     private val pipeline = KLineRenderPipeline()
 
     fun render(plan: KLineRenderPlan, canvas: KLineCanvasAdapter) {
+        canvas.drawRect(
+            plan.bounds.left, plan.bounds.top, plan.bounds.right, plan.bounds.bottom,
+            plan.theme.backgroundColor,
+        )
         val sink = object : KLinePrimitiveSink {
             override fun draw(primitive: KLineDrawingPrimitive) {
                 emitPrimitive(primitive, canvas)
@@ -41,6 +45,10 @@ internal object KLineCanvasRenderer {
      * - Candle 图元拆分为影线（drawLine）与实体（drawRect），同色蜡烛共享批量绘制。
      */
     fun renderBatched(plan: KLineRenderPlan, canvas: KLineCanvasAdapter) {
+        canvas.drawRect(
+            plan.bounds.left, plan.bounds.top, plan.bounds.right, plan.bounds.bottom,
+            plan.theme.backgroundColor,
+        )
         val collected = KLinePrimitiveListSink()
         pipeline.render(plan, collected)
         val flattened = flattenCandles(collected.primitives)

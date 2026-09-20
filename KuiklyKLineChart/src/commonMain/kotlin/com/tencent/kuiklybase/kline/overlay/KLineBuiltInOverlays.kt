@@ -4,11 +4,17 @@ import com.tencent.kuiklybase.kline.indicator.KLineExtensionRegistry
 
 internal object KLineBuiltInOverlays {
     const val HORIZONTAL_LINE_NAME = "horizontal_line"
+    const val HORIZONTAL_RAY_NAME = "horizontal_ray"
+    const val HORIZONTAL_SEGMENT_NAME = "horizontal_segment"
     const val VERTICAL_LINE_NAME = "vertical_line"
+    const val VERTICAL_RAY_NAME = "vertical_ray"
+    const val VERTICAL_SEGMENT_NAME = "vertical_segment"
     const val SEGMENT_NAME = "segment"
     const val TREND_LINE_NAME = "trend_line"
+    const val STRAIGHT_LINE_NAME = "straight_line"
     const val RAY_NAME = "ray"
     const val PRICE_LINE_NAME = "price_line"
+    const val SIMPLE_TAG_NAME = "simple_tag"
     const val PARALLEL_LINES_NAME = "parallel_lines"
     const val PRICE_CHANNEL_NAME = "price_channel"
     const val FIBONACCI_RETRACEMENT_NAME = "fibonacci_retracement"
@@ -19,9 +25,33 @@ internal object KLineBuiltInOverlays {
         val point = context.points[0]
         listOf(KLineOverlayFigure.HorizontalLine(point.value, context.style()))
     }
+    val HORIZONTAL_SEGMENT = template(HORIZONTAL_SEGMENT_NAME, 2) { context ->
+        val start = context.points[0]
+        val end = context.points[1]
+        require(start.timestamp != end.timestamp) { "Overlay $HORIZONTAL_SEGMENT_NAME requires distinct timestamps" }
+        listOf(KLineOverlayFigure.Segment(start, KLineOverlayPoint(end.timestamp, start.value), context.style()))
+    }
+    val HORIZONTAL_RAY = template(HORIZONTAL_RAY_NAME, 2) { context ->
+        val start = context.points[0]
+        val end = context.points[1]
+        require(start.timestamp != end.timestamp) { "Overlay $HORIZONTAL_RAY_NAME requires distinct timestamps" }
+        listOf(KLineOverlayFigure.Ray(start, KLineOverlayPoint(end.timestamp, start.value), context.style()))
+    }
     val VERTICAL_LINE = template(VERTICAL_LINE_NAME, 1) { context ->
         val point = context.points[0]
         listOf(KLineOverlayFigure.VerticalLine(point.timestamp, context.style()))
+    }
+    val VERTICAL_SEGMENT = template(VERTICAL_SEGMENT_NAME, 2) { context ->
+        val start = context.points[0]
+        val end = context.points[1]
+        require(start.value != end.value) { "Overlay $VERTICAL_SEGMENT_NAME requires distinct values" }
+        listOf(KLineOverlayFigure.Segment(start, KLineOverlayPoint(start.timestamp, end.value), context.style()))
+    }
+    val VERTICAL_RAY = template(VERTICAL_RAY_NAME, 2) { context ->
+        val start = context.points[0]
+        val end = context.points[1]
+        require(start.value != end.value) { "Overlay $VERTICAL_RAY_NAME requires distinct values" }
+        listOf(KLineOverlayFigure.Ray(start, KLineOverlayPoint(start.timestamp, end.value), context.style()))
     }
     val SEGMENT = template(SEGMENT_NAME, 2) { context ->
         listOf(KLineOverlayFigure.Segment(context.points[0], context.points[1], context.style()))
@@ -30,20 +60,19 @@ internal object KLineBuiltInOverlays {
         requireDistinctPoints(context.points[0], context.points[1], TREND_LINE_NAME)
         listOf(KLineOverlayFigure.InfiniteLine(context.points[0], context.points[1], context.style()))
     }
+    val STRAIGHT_LINE = template(STRAIGHT_LINE_NAME, 2) { context ->
+        requireDistinctPoints(context.points[0], context.points[1], STRAIGHT_LINE_NAME)
+        listOf(KLineOverlayFigure.InfiniteLine(context.points[0], context.points[1], context.style()))
+    }
     val RAY = template(RAY_NAME, 2) { context ->
         requireDistinctPoints(context.points[0], context.points[1], RAY_NAME)
         listOf(KLineOverlayFigure.Ray(context.points[0], context.points[1], context.style()))
     }
     val PRICE_LINE = template(PRICE_LINE_NAME, 1) { context ->
-        val point = context.points[0]
-        listOf(
-            KLineOverlayFigure.HorizontalLine(point.value, context.style()),
-            KLineOverlayFigure.Text(
-                point,
-                context.extendData["text"] ?: formatPrice(point.value),
-                context.style(KLineOverlayStyleKey.TEXT),
-            ),
-        )
+        priceTagFigures(context)
+    }
+    val SIMPLE_TAG = template(SIMPLE_TAG_NAME, 1) { context ->
+        priceTagFigures(context)
     }
     val PARALLEL_LINES = template(PARALLEL_LINES_NAME, 3) { context ->
         parallelFigures(context, includeMiddle = false)
@@ -79,11 +108,17 @@ internal object KLineBuiltInOverlays {
 
     val templates: List<KLineOverlayTemplate> = listOf(
         HORIZONTAL_LINE,
+        HORIZONTAL_RAY,
+        HORIZONTAL_SEGMENT,
         VERTICAL_LINE,
+        VERTICAL_RAY,
+        VERTICAL_SEGMENT,
         SEGMENT,
         TREND_LINE,
+        STRAIGHT_LINE,
         RAY,
         PRICE_LINE,
+        SIMPLE_TAG,
         PARALLEL_LINES,
         PRICE_CHANNEL,
         FIBONACCI_RETRACEMENT,
@@ -103,6 +138,18 @@ internal object KLineBuiltInOverlays {
         override val requiredPointCount = requiredPointCount
         override val drawingMode = drawingMode
         override fun createFigures(context: KLineOverlayContext): List<KLineOverlayFigure> = createFigures(context)
+    }
+
+    private fun priceTagFigures(context: KLineOverlayContext): List<KLineOverlayFigure> {
+        val point = context.points[0]
+        return listOf(
+            KLineOverlayFigure.HorizontalLine(point.value, context.style()),
+            KLineOverlayFigure.Text(
+                point,
+                context.extendData["text"] ?: formatPrice(point.value),
+                context.style(KLineOverlayStyleKey.TEXT),
+            ),
+        )
     }
 
     private fun parallelFigures(

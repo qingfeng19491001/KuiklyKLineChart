@@ -39,6 +39,10 @@ class KLineOverlayEngineTest {
         assertEquals("horizontal_line", registry.findOverlay("HORIZONTAL_LINE")!!.name)
         assertEquals("vertical_line", registry.findOverlay("VERTICAL_LINE")!!.name)
         assertEquals("trend_line", registry.findOverlay("TREND_LINE")!!.name)
+        assertEquals("horizontal_ray", registry.findOverlay("HORIZONTAL_RAY")!!.name)
+        assertEquals("straight_line", registry.findOverlay("STRAIGHT_LINE")!!.name)
+        assertEquals("simple_tag", registry.findOverlay("SIMPLE_TAG")!!.name)
+        assertEquals("freehand", canonicalizeOverlayTemplateName("brush"))
         assertEquals("text_annotation", registry.findOverlay("TEXT")!!.name)
         assertEquals("text_annotation", registry.findOverlay("text_annotation")!!.name)
         assertEquals("MyOverlay", canonicalizeOverlayTemplateName("MyOverlay"))
@@ -50,7 +54,8 @@ class KLineOverlayEngineTest {
     fun builtInsExposeTheCompleteStableTemplateSetAndKnownGeometry() {
         assertEquals(
             listOf(
-                "horizontal_line", "vertical_line", "segment", "trend_line", "ray", "price_line",
+                "horizontal_line", "horizontal_ray", "horizontal_segment", "vertical_line", "vertical_ray",
+                "vertical_segment", "segment", "trend_line", "straight_line", "ray", "price_line", "simple_tag",
                 "parallel_lines", "price_channel", "fibonacci_retracement", "text_annotation", "freehand",
             ),
             KLineBuiltInOverlays.templates.map(KLineOverlayTemplate::name),
@@ -79,6 +84,22 @@ class KLineOverlayEngineTest {
         assertEquals(
             KLineOverlayFigure.Ray(point(10, 20.0), point(30, 40.0), style),
             engine.createFigures(instance("ray", listOf(point(10, 20.0), point(30, 40.0)), style)).single(),
+        )
+        assertEquals(
+            KLineOverlayFigure.Segment(point(10, 20.0), point(30, 20.0), style),
+            engine.createFigures(instance("horizontal_segment", listOf(point(10, 20.0), point(30, 40.0)), style)).single(),
+        )
+        assertEquals(
+            KLineOverlayFigure.Ray(point(10, 20.0), point(30, 20.0), style),
+            engine.createFigures(instance("horizontal_ray", listOf(point(10, 20.0), point(30, 40.0)), style)).single(),
+        )
+        assertEquals(
+            KLineOverlayFigure.Segment(point(10, 20.0), point(10, 40.0), style),
+            engine.createFigures(instance("vertical_segment", listOf(point(10, 20.0), point(30, 40.0)), style)).single(),
+        )
+        assertEquals(
+            KLineOverlayFigure.InfiniteLine(point(10, 20.0), point(30, 40.0), style),
+            engine.createFigures(instance("straight_line", listOf(point(10, 20.0), point(30, 40.0)), style)).single(),
         )
         assertEquals(
             listOf(

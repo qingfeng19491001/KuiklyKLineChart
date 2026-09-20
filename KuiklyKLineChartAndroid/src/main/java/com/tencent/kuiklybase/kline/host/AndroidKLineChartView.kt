@@ -26,6 +26,13 @@ class AndroidKLineChartView(context: Context) : View(context), IKuiklyRenderView
     private var paneHeaderDownY = 0f
     private val eventCallbacks = mutableMapOf<String, KuiklyRenderCallback>()
 
+    init {
+        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        elevation = 0f
+        outlineProvider = null
+        clipToOutline = false
+    }
+
     private val platform = KLinePlatformHost(
         onInvalidate = { postInvalidateOnAnimation() },
         onEvent = { name, payload ->

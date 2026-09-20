@@ -139,6 +139,8 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
 
     public fun removeOverlay(instanceId: String) = callJson(METHOD_REMOVE_OVERLAY, jsonOf("id", instanceId))
 
+    public fun removeOverlayGroup(groupId: String) = callJson(METHOD_REMOVE_OVERLAY_GROUP, jsonOf("groupId", groupId))
+
     /** Exports a JSON snapshot suitable for [restoreState]. */
     public fun exportState(callback: (String) -> Unit) = callJson(METHOD_EXPORT_STATE, null) { result ->
         callback(bridgeJson(result).toString())
@@ -166,12 +168,16 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
         templateName: String,
         paneId: String = "price",
         magnetMode: String = "none",
+        groupId: String? = null,
+        locked: Boolean = false,
     ) {
         performTaskWhenRenderViewDidLoad {
             val params = JSONObject().apply {
                 put("templateName", templateName)
                 put("paneId", paneId)
                 put("magnetMode", magnetMode)
+                if (groupId != null) put("groupId", groupId)
+                put("locked", locked)
             }
             renderView?.callMethod(METHOD_BEGIN_OVERLAY, params.toString())
         }
@@ -245,6 +251,7 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
         public const val METHOD_CREATE_OVERLAY: String = "createOverlay"
         public const val METHOD_UPDATE_OVERLAY: String = "updateOverlay"
         public const val METHOD_REMOVE_OVERLAY: String = "removeOverlay"
+        public const val METHOD_REMOVE_OVERLAY_GROUP: String = "removeOverlayGroup"
         public const val METHOD_EXPORT_STATE: String = "exportState"
         public const val METHOD_RESTORE_STATE: String = "restoreState"
 
@@ -260,18 +267,24 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
             METHOD_CLEAR_CROSSHAIR, METHOD_DELETE_SELECTED_OVERLAY, METHOD_SET_PANE, METHOD_REMOVE_PANE,
             METHOD_MOVE_PANE, METHOD_SET_PANE_STATE, METHOD_ADD_INDICATOR, METHOD_UPDATE_INDICATOR,
             METHOD_REMOVE_INDICATOR, METHOD_CREATE_OVERLAY, METHOD_UPDATE_OVERLAY, METHOD_REMOVE_OVERLAY,
-            METHOD_EXPORT_STATE, METHOD_RESTORE_STATE,
+            METHOD_REMOVE_OVERLAY_GROUP, METHOD_EXPORT_STATE, METHOD_RESTORE_STATE,
         )
     }
 
     /** Public overlay template names accepted by [beginOverlay] / [createOverlay]. */
     public object OverlayTemplate {
         public const val HORIZONTAL_LINE: String = "HORIZONTAL_LINE"
+        public const val HORIZONTAL_RAY: String = "HORIZONTAL_RAY"
+        public const val HORIZONTAL_SEGMENT: String = "HORIZONTAL_SEGMENT"
         public const val VERTICAL_LINE: String = "VERTICAL_LINE"
+        public const val VERTICAL_RAY: String = "VERTICAL_RAY"
+        public const val VERTICAL_SEGMENT: String = "VERTICAL_SEGMENT"
         public const val SEGMENT: String = "SEGMENT"
         public const val TREND_LINE: String = "TREND_LINE"
+        public const val STRAIGHT_LINE: String = "STRAIGHT_LINE"
         public const val RAY: String = "RAY"
         public const val PRICE_LINE: String = "PRICE_LINE"
+        public const val SIMPLE_TAG: String = "SIMPLE_TAG"
         public const val PARALLEL_LINES: String = "PARALLEL_LINES"
         public const val PRICE_CHANNEL: String = "PRICE_CHANNEL"
         public const val FIBONACCI_RETRACEMENT: String = "FIBONACCI_RETRACEMENT"
@@ -279,8 +292,9 @@ public class KLineChartView : DeclarativeBaseView<KLineChartAttr, KLineChartEven
         public const val FREEHAND: String = "FREEHAND"
 
         internal val KEYS: Set<String> = setOf(
-            HORIZONTAL_LINE, VERTICAL_LINE, SEGMENT, TREND_LINE, RAY, PRICE_LINE,
-            PARALLEL_LINES, PRICE_CHANNEL, FIBONACCI_RETRACEMENT, TEXT, FREEHAND,
+            HORIZONTAL_LINE, HORIZONTAL_RAY, HORIZONTAL_SEGMENT, VERTICAL_LINE, VERTICAL_RAY, VERTICAL_SEGMENT,
+            SEGMENT, TREND_LINE, STRAIGHT_LINE, RAY, PRICE_LINE, SIMPLE_TAG, PARALLEL_LINES, PRICE_CHANNEL,
+            FIBONACCI_RETRACEMENT, TEXT, FREEHAND,
         )
     }
 }
@@ -341,7 +355,7 @@ public class KLineChartAttr : Attr() {
         return this
     }
 
-    /** Selects price rendering: `candle` or `line`. */
+    /** Selects price rendering: `candle`, `candle_hollow`, `candle_up_stroke`, `candle_down_stroke`, `ohlc`, `line`, or `area`. */
     public fun priceStyle(name: String): KLineChartAttr {
         KLineChartView.PROP_PRICE_STYLE with name
         return this

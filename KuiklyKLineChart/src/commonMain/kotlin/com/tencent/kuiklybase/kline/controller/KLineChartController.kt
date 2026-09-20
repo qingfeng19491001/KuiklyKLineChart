@@ -83,6 +83,8 @@ class KLineChartController {
         name: String,
         paneId: String = "price",
         magnetMode: KLineOverlayMagnetMode = KLineOverlayMagnetMode.NONE,
+        groupId: String? = null,
+        locked: Boolean = false,
     ): String {
         require(name.isNotBlank()) { "Overlay template name must not be blank" }
         val id = allocateOverlayId()
@@ -92,6 +94,8 @@ class KLineChartController {
                 canonicalizeOverlayTemplateName(name),
                 paneId,
                 magnetMode,
+                groupId,
+                locked,
             ),
         )
         return id
@@ -120,6 +124,11 @@ class KLineChartController {
     fun removeOverlay(instanceId: String) {
         require(instanceId.isNotBlank()) { "Overlay instance id must not be blank" }
         dispatch(KLineControllerCommand.RemoveOverlay(instanceId))
+    }
+
+    fun removeOverlayGroup(groupId: String) {
+        require(groupId.isNotBlank()) { "Overlay group id must not be blank" }
+        dispatch(KLineControllerCommand.RemoveOverlayGroup(groupId))
     }
 
     internal fun attach(target: KLineChartControllerTarget) {
@@ -182,11 +191,14 @@ internal sealed interface KLineControllerCommand {
     data class CreateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
     data class UpdateOverlay(val instance: KLineOverlayInstance) : KLineControllerCommand
     data class RemoveOverlay(val instanceId: String) : KLineControllerCommand
+    data class RemoveOverlayGroup(val groupId: String) : KLineControllerCommand
     data class BeginOverlay(
         val draftId: String,
         val templateName: String,
         val paneId: String,
         val magnetMode: KLineOverlayMagnetMode,
+        val groupId: String? = null,
+        val locked: Boolean = false,
     ) : KLineControllerCommand
     data object CancelInteraction : KLineControllerCommand
     data object ClearCrosshair : KLineControllerCommand

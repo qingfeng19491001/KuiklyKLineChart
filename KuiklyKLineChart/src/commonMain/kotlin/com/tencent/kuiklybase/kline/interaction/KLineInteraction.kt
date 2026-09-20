@@ -106,6 +106,8 @@ internal sealed interface KLineInteractionSession {
         val paneId: String,
         val magnetMode: KLineOverlayMagnetMode,
         val points: List<KLineOverlayPoint> = emptyList(),
+        val groupId: String? = null,
+        val locked: Boolean = false,
     ) : KLineInteractionSession {
         override val state = KLineInteractionState.DRAWING_OVERLAY
     }

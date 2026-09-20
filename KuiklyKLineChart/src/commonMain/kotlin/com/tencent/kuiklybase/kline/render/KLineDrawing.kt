@@ -39,20 +39,102 @@ internal class KLineGridRenderer : KLineRenderer {
 internal class KLineCandleRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
         val pane = plan.panes.firstOrNull { it.kind == com.tencent.kuiklybase.kline.pane.KLinePaneKind.PRICE } ?: return
-        if (plan.priceStyle == com.tencent.kuiklybase.kline.KLinePriceStyle.LINE) {
-            val points = plan.bars.map { entry -> KLinePoint(entry.x, pane.axis.valueToPixel(entry.bar.close)) }
-            if (points.size >= 2) sink.draw(KLineDrawingPrimitive.Polyline(KLineRenderLayer.CANDLE, points, KLineStroke(plan.theme.indicator.palette.first(), 1.5)))
-            return
+        val closePoints = plan.bars.map { entry -> KLinePoint(entry.x, pane.axis.valueToPixel(entry.bar.close)) }
+        val lineColor = plan.theme.indicator.palette.first()
+        when (plan.priceStyle) {
+            com.tencent.kuiklybase.kline.KLinePriceStyle.LINE -> {
+                if (closePoints.size >= 2) {
+                    sink.draw(KLineDrawingPrimitive.Polyline(KLineRenderLayer.CANDLE, closePoints, KLineStroke(lineColor, 1.5)))
+                }
+                return
+            }
+            com.tencent.kuiklybase.kline.KLinePriceStyle.AREA -> {
+                val baseline = pane.rect.bottom
+                val fill = colorWithRgbAlpha(lineColor, "4D")
+                plan.bars.forEach { entry ->
+                    val closeY = pane.axis.valueToPixel(entry.bar.close)
+                    val half = plan.barSpace / 2.0
+                    sink.draw(
+                        KLineDrawingPrimitive.Rect(
+                            KLineRenderLayer.CANDLE,
+                            KLineRect(entry.x - half, minOf(closeY, baseline), entry.x + half, maxOf(closeY, baseline)),
+                            fill,
+                        ),
+                    )
+                }
+                if (closePoints.size >= 2) {
+                    sink.draw(KLineDrawingPrimitive.Polyline(KLineRenderLayer.CANDLE, closePoints, KLineStroke(lineColor, 1.5)))
+                }
+                return
+            }
+            else -> Unit
         }
         plan.bars.forEach { entry ->
             val bar = entry.bar
-            val color = when { bar.close > bar.open -> plan.theme.candle.riseColor; bar.close < bar.open -> plan.theme.candle.fallColor; else -> plan.theme.candle.unchangedColor }
+            val rising = bar.close > bar.open
+            val falling = bar.close < bar.open
+            val color = when {
+                rising -> plan.theme.candle.riseColor
+                falling -> plan.theme.candle.fallColor
+                else -> plan.theme.candle.unchangedColor
+            }
             val openY = pane.axis.valueToPixel(bar.open)
             val highY = pane.axis.valueToPixel(bar.high)
             val lowY = pane.axis.valueToPixel(bar.low)
             val closeY = pane.axis.valueToPixel(bar.close)
             val bodyWidth = plan.barSpace * plan.theme.candle.bodyWidthRatio
-            sink.draw(KLineDrawingPrimitive.Candle(x = entry.x, openY = openY, highY = highY, lowY = lowY, closeY = closeY, bodyWidth = bodyWidth, color = color, wickWidth = plan.theme.candle.wickWidth))
+            when (plan.priceStyle) {
+                com.tencent.kuiklybase.kline.KLinePriceStyle.OHLC -> {
+                    val half = bodyWidth / 2.0
+                    val wick = KLineStroke(color, plan.theme.candle.wickWidth)
+                    sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.CANDLE, KLinePoint(entry.x, highY), KLinePoint(entry.x, lowY), wick))
+                    sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.CANDLE, KLinePoint(entry.x - half, openY), KLinePoint(entry.x, openY), wick))
+                    sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.CANDLE, KLinePoint(entry.x, closeY), KLinePoint(entry.x + half, closeY), wick))
+                }
+                else -> {
+                    val hollow = when (plan.priceStyle) {
+                        com.tencent.kuiklybase.kline.KLinePriceStyle.CANDLE_HOLLOW -> true
+                        com.tencent.kuiklybase.kline.KLinePriceStyle.CANDLE_UP_STROKE -> rising
+                        com.tencent.kuiklybase.kline.KLinePriceStyle.CANDLE_DOWN_STROKE -> falling
+                        else -> false
+                    }
+                    if (hollow) {
+                        val halfWidth = bodyWidth / 2.0
+                        val top = minOf(openY, closeY)
+                        val rawBottom = maxOf(openY, closeY)
+                        val bottom = if (rawBottom - top < 1.0) top + 1.0 else rawBottom
+                        sink.draw(
+                            KLineDrawingPrimitive.Line(
+                                KLineRenderLayer.CANDLE,
+                                KLinePoint(entry.x, highY),
+                                KLinePoint(entry.x, lowY),
+                                KLineStroke(color, plan.theme.candle.wickWidth),
+                            ),
+                        )
+                        sink.draw(
+                            KLineDrawingPrimitive.Rect(
+                                KLineRenderLayer.CANDLE,
+                                KLineRect(entry.x - halfWidth, top, entry.x + halfWidth, bottom),
+                                fillColor = "#00000000",
+                                stroke = KLineStroke(color, plan.theme.candle.wickWidth),
+                            ),
+                        )
+                    } else {
+                        sink.draw(
+                            KLineDrawingPrimitive.Candle(
+                                x = entry.x,
+                                openY = openY,
+                                highY = highY,
+                                lowY = lowY,
+                                closeY = closeY,
+                                bodyWidth = bodyWidth,
+                                color = color,
+                                wickWidth = plan.theme.candle.wickWidth,
+                            ),
+                        )
+                    }
+                }
+            }
             if (plan.clickSelectedBar?.index == entry.index) {
                 val halfWidth = bodyWidth / 2.0
                 val top = minOf(openY, closeY)
@@ -77,6 +159,11 @@ internal class KLineCandleRenderer : KLineRenderer {
             }
         }
     }
+}
+
+internal fun colorWithRgbAlpha(color: String, alphaHex: String): String {
+    val raw = color.removePrefix("#")
+    return if (raw.length == 6) "#$raw$alphaHex" else color
 }
 
 internal class KLineIndicatorRenderer : KLineRenderer {

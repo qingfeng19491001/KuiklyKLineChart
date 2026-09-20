@@ -15,6 +15,7 @@ import com.tencent.kuikly.core.pager.Pager
 import com.tencent.kuikly.core.directives.vbind
 import com.tencent.kuikly.core.directives.vif
 import com.tencent.kuikly.core.reactive.handler.observable
+import com.tencent.kuikly.core.views.Scroller
 import com.tencent.kuikly.core.views.Text
 import com.tencent.kuikly.core.views.View
 import com.tencent.kuikly.core.views.Image
@@ -58,13 +59,43 @@ internal fun demoPeriodBars(span: Int, unit: String, line: Boolean): List<KLineB
 
 internal fun demoDaySignalBar(): KLineBar = demoPeriodBars(span = 1, unit = "day", line = false)[90]
 private enum class DemoMainIndicator(val label: String, val template: String?, val params: List<Double> = emptyList()) {
-    BARE("裸K", null), MA("MA", "MA", listOf(5.0, 10.0, 20.0, 30.0)), BOLL("BOLL", "BOLL"), EXPMA("EXPMA", "EXPMA"), BBI("BBI", "BBI"), ENE("ENE", "ENE")
+    BARE("裸K", null),
+    MA("MA", "MA", listOf(5.0, 10.0, 20.0, 30.0)),
+    SMA("SMA", "SMA"),
+    EMA("EMA", "EMA"),
+    BOLL("BOLL", "BOLL"),
+    SAR("SAR", "SAR"),
+    EXPMA("EXPMA", "EXPMA"),
+    BBI("BBI", "BBI"),
+    ENE("ENE", "ENE"),
 }
 private enum class DemoFirstIndicator(val label: String, val template: String) {
-    VOLUME("成交量", "VOL"), MACD("MACD", "MACD"), AMOUNT("成交额", "AMOUNT")
+    VOLUME("成交量", "VOL"),
+    AMOUNT("成交额", "AMOUNT"),
+    OBV("OBV", "OBV"),
+    VR("VR", "VR"),
+    PVT("PVT", "PVT"),
+    AVP("AVP", "AVP"),
+    MACD("MACD", "MACD"),
 }
 private enum class DemoSecondIndicator(val label: String, val template: String) {
-    MACD("MACD", "MACD"), KDJ("KDJ", "KDJ"), RSI("RSI", "RSI"), WR("WR", "WR"), BBD("BBD", "BBD")
+    MACD("MACD", "MACD"),
+    KDJ("KDJ", "KDJ"),
+    RSI("RSI", "RSI"),
+    WR("WR", "WR"),
+    BBD("BBD", "BBD"),
+    CCI("CCI", "CCI"),
+    DMI("DMI", "DMI"),
+    BIAS("BIAS", "BIAS"),
+    ROC("ROC", "ROC"),
+    TRIX("TRIX", "TRIX"),
+    DMA("DMA", "DMA"),
+    AO("AO", "AO"),
+    BRAR("BRAR", "BRAR"),
+    CR("CR", "CR"),
+    EMV("EMV", "EMV"),
+    MTM("MTM", "MTM"),
+    PSY("PSY", "PSY"),
 }
 private enum class DemoMenu { PERIOD, MAIN, FIRST, SECOND }
 
@@ -248,7 +279,6 @@ internal abstract class ShowcasePage : Pager() {
                     height(ctx.pageData.statusBarHeight + 44f)
                     paddingTop(ctx.pageData.statusBarHeight)
                     backgroundColor(Color.WHITE)
-                    zIndex(100)
                 }
                 View {
                     attr { height(44f); allCenter(); paddingLeft(48f); paddingRight(48f) }
@@ -259,7 +289,7 @@ internal abstract class ShowcasePage : Pager() {
                 View {
                     attr {
                         positionAbsolute(); top(ctx.pageData.statusBarHeight); left(0f)
-                        size(48f, 44f); allCenter(); zIndex(101)
+                        size(48f, 44f); allCenter()
                     }
                     Text { attr { text("←"); fontSize(22f); color(Color(0xFF333333)) } }
                     event { click { ctx.acquireModule<RouterModule>(RouterModule.MODULE_NAME).closePage() } }
@@ -474,18 +504,22 @@ internal class FullChartDemo : ShowcasePage() {
         select: (T) -> Unit,
     ): ViewBuilder {
         val page = this
-        val placement = demoPopupPlacement(anchorTop, 18f, options.size, containerHeight)
+        val placement = demoPopupPlacement(anchorTop, 18f, options.size.coerceAtMost(12), containerHeight)
+        val menuHeight = (options.size * 27f + 10f).coerceAtMost((containerHeight * 0.72f).coerceAtLeast(120f))
         return {
           View {
             attr {
                 positionAbsolute(); left(0f); top(placement.top); zIndex(50); width(82f); padding(5f)
                 backgroundColor(Color.WHITE); borderRadius(7f); boxShadow(BoxShadow(0f, if (placement.opensUpward) -2f else 2f, 8f, Color(0x1F000000)))
             }
-            options.forEach { option ->
-                View {
-                    attr { height(27f); allCenter(); borderRadius(5f); backgroundColor(if (selected(option)) Color(0x1A1677FF) else Color.TRANSPARENT) }
-                    event { click { select(option); page.openMenu = null } }
-                    Text { attr { text(label(option)); fontSize(11f); color(if (selected(option)) Color(0xFF1677FF) else Color(0xFF595959)) } }
+            Scroller {
+                attr { width(72f); height(menuHeight) }
+                options.forEach { option ->
+                    View {
+                        attr { height(27f); allCenter(); borderRadius(5f); backgroundColor(if (selected(option)) Color(0x1A1677FF) else Color.TRANSPARENT) }
+                        event { click { select(option); page.openMenu = null } }
+                        Text { attr { text(label(option)); fontSize(11f); color(if (selected(option)) Color(0xFF1677FF) else Color(0xFF595959)) } }
+                    }
                 }
             }
           }

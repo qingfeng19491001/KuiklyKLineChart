@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Cross-platform host contract locked to `KLineChartView` prop/method/event/overlay-template constants, with Android-gold fixtures for density/pane layout, `KLinePointerEvent` gestures, load/realtime/crosshair/overlay/signal/FULL·COMPACT, and attach/detach restore. Public overlay names (`HORIZONTAL_LINE`) resolve to the engine registry.
+- Host `priceStyle` now accepts `candle` / `candle_hollow` / `candle_up_stroke` / `candle_down_stroke` / `ohlc` / `line` / `area`.
+- Built-in indicators now cover the full KLineChart set: SMA, EMA, SAR, OBV, CCI, DMI, BIAS, ROC, BRAR, CR, DMA, EMV, MTM, PSY, TRIX, VR, AO, PVT, AVP (plus existing A-share extras EXPMA/ENE/AMOUNT/BBD).
+- Overlay variants matching KLineChart names (horizontal/vertical ray & segment, straight line, simple tag) plus `removeOverlayGroup` and beginOverlay `groupId`/`locked`.
+- Demos: full-chart indicator menus cover the built-in set; `IndicatorSwitchPage` adds SAR/EMA/CCI/KDJ; `OverlayDrawPage` adds Fibonacci retracement and freehand brush.
 - `KLineGestureArbitrator` lives in the library Host; Android / iOS / OHOS shells only collect raw touches and map CHART/PARENT onto platform intercept APIs.
 - Map-style four artifacts (`KuiklyKLineChart` / Android / iOS / Ohos), unified `KLinePlatformHost`, non-SNAPSHOT coordinates, `publish-maven.sh`, and `MinimalLibrarySample`.
 - Community Maven on GitHub Pages (`io.github.qingfeng19491001`) so other projects can depend without credentials, before official `com.tencent.kuiklybase` adoption.
@@ -37,8 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State center: `KLineStore` with per-subsystem revision counters and observer hooks.
 - Controller API: long-lived `KLineChartController` with command pipe (pan/zoom/switch-panes/add-indicator/add-overlay/export-state).
 - Dynamic pane system: weighted layout, maximized/minimized per pane, separator-based resizing.
-- Indicator extension: template+instance model with built-in MA, BOLL, EXPMA, BBI, ENE, VOL, AMOUNT, MACD, KDJ, RSI, WR, BBD.
-- Overlay extension: template+instance model with magnet吸附, built-in horizontal/vertical line, segment, trend line, ray, price line, parallel lines, price channel, fibonacci retracement, text annotation, freehand.
+- Indicator extension: template+instance model with built-in MA, BOLL, EXPMA, BBI, ENE, SMA, EMA, SAR, VOL, AMOUNT, OBV, MACD, KDJ, RSI, WR, BBD, CCI, DMI, BIAS, ROC.
+- Overlay extension: template+instance model with magnet吸附, lock/groupId, built-in horizontal/vertical line/ray/segment, segment, trend/straight line, ray, price line, simple tag, parallel lines, price channel, fibonacci retracement, text annotation, freehand.
 - Interaction state machine with explicit priority: overlay control point > overlay figure > crosshair > pane separator > scale > pan > click.
 - Rendering pipeline: `KLineRenderPlanner` produces immutable `KLineRenderPlan`; layered renderers for grid, candles, indicators, overlays, axis, crosshair, tooltip.
 - `KLineChartEngine` public Facade: pointer dispatch, render plan flow, load before/after hooks.

@@ -44,7 +44,8 @@ final class KRKLineChart: UIView, KuiklyRenderViewExportProtocol, UIGestureRecog
     }
 
     private func commonInit() {
-        backgroundColor = .white
+        backgroundColor = .clear
+        layer.shadowOpacity = 0
         contentMode = .redraw
         isMultipleTouchEnabled = true
 

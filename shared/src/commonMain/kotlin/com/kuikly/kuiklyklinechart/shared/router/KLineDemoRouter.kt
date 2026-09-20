@@ -38,8 +38,8 @@ data class DemoEntry(
 object KLineDemoRouter {
     val entries: List<DemoEntry> = listOf(
         DemoEntry("basic", "基础 K 线页", "主图 MA + VOL 副图 / 平移缩放 / 十字光标 / 切换主题") { BasicPageDemoAdapter() },
-        DemoEntry("indicators", "指标切换", "MA / BOLL / EXPMA 轮动，副图 VOL / MACD / KDJ 轮动") { IndicatorSwitchPage() },
-        DemoEntry("overlays", "画线系统", "趋势线 / 水平线 / 文本标注，控制点拖拽，磁铁吸附") { OverlayDrawPage() },
+        DemoEntry("indicators", "指标切换", "主图 MA / BOLL / SAR / EMA，副图 VOL / MACD / CCI / KDJ") { IndicatorSwitchPage() },
+        DemoEntry("overlays", "画线系统", "趋势 / 水平射线 / 斐波那契 / 画笔 / 价格标签") { OverlayDrawPage() },
         DemoEntry("interaction", "交互演示", "交互状态机演示：画线拖拽 > 十字光标 > 分隔条 > 缩放 > 平移") { InteractionShowcasePage() },
         DemoEntry("error", "错误与重试", "加载失败模拟、手动重试、前后分页、边界场景") { ErrorHandlePage() },
     )

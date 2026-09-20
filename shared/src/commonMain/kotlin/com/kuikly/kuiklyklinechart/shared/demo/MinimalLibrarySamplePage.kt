@@ -31,10 +31,11 @@ internal class MinimalLibrarySamplePage : ShowcasePage() {
                     }
                 }
                 View {
-                    attr { flex(1f); marginLeft(8f); marginRight(8f); marginBottom(12f) }
+                    attr { flex(1f); marginLeft(8f); marginRight(8f); marginBottom(12f); backgroundColor(Color.WHITE) }
                     KLineChart {
                         attr {
                             flex(1f)
+                            backgroundColor(Color.WHITE)
                             symbol("00700", "腾讯控股")
                             period(1, "day")
                             mode("full")

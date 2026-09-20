@@ -516,8 +516,16 @@ class KLineStoreTest {
             "BBI" to listOf(2.0, 3.0, 5.0, 7.0), "ENE" to listOf(4.0, 7.0, 3.0), "VOL" to listOf(3.0, 6.0),
             "AMOUNT" to emptyList(), "MACD" to listOf(3.0, 8.0, 4.0), "KDJ" to listOf(5.0, 2.0, 4.0),
             "RSI" to listOf(3.0, 5.0), "WR" to listOf(4.0), "BBD" to listOf(3.0, 4.0),
+            "SMA" to listOf(3.0, 7.0), "EMA" to listOf(3.0, 8.0), "SAR" to listOf(2.0, 2.0, 20.0),
+            "OBV" to emptyList(), "CCI" to listOf(4.0), "DMI" to listOf(4.0),
+            "BIAS" to listOf(3.0, 5.0), "ROC" to listOf(4.0),
+            "BRAR" to listOf(4.0), "CR" to listOf(5.0, 2.0, 3.0, 4.0, 5.0),
+            "DMA" to listOf(2.0, 3.0, 2.0), "EMV" to listOf(3.0, 2.0),
+            "MTM" to listOf(3.0, 2.0), "PSY" to listOf(3.0, 2.0),
+            "TRIX" to listOf(3.0, 2.0), "VR" to listOf(4.0, 2.0),
+            "AO" to listOf(2.0, 3.0), "PVT" to emptyList(), "AVP" to emptyList(),
         )
-        val finite = setOf("MA", "BOLL", "BBI", "ENE", "VOL", "AMOUNT", "WR")
+        val finite = setOf("MA", "BOLL", "BBI", "ENE", "VOL", "AMOUNT", "WR", "SMA", "CCI", "BIAS", "ROC", "BRAR", "CR", "DMA", "EMV", "MTM", "PSY", "VR", "AO")
         KLineBuiltInIndicators.templates.forEach { template ->
             val params = paramsByName.getValue(template.name)
             val store = KLineStore(extensionRegistry = KLineExtensionRegistry(listOf(template)))

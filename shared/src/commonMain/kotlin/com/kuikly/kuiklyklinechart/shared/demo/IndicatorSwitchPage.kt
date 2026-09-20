@@ -22,9 +22,11 @@ class IndicatorSwitchPage : KLineBaseDemoPage() {
     override val toolbarActions: List<KLineToolbarAction> = listOf(
         KLineToolbarAction("main_ma", "MA"),
         KLineToolbarAction("main_boll", "BOLL"),
-        KLineToolbarAction("main_expma", "EXPMA"),
+        KLineToolbarAction("main_sar", "SAR"),
+        KLineToolbarAction("main_ema", "EMA"),
         KLineToolbarAction("sub_vol", "VOL"),
         KLineToolbarAction("sub_macd", "MACD"),
+        KLineToolbarAction("sub_cci", "CCI"),
         KLineToolbarAction("sub_kdj", "KDJ"),
     )
 
@@ -49,7 +51,8 @@ class IndicatorSwitchPage : KLineBaseDemoPage() {
     private fun applyMainIndicator(dsl: KLineChartDsl, name: String) {
         dsl.indicator(when (name) {
             "BOLL" -> KLineBuiltInIndicators.BOLL.instance("boll-$name", "price", listOf(20.0, 2.0))
-            "EXPMA" -> KLineBuiltInIndicators.EXPMA.instance("exp-$name", "price", listOf(12.0))
+            "SAR" -> KLineBuiltInIndicators.SAR.instance("sar-$name", "price")
+            "EMA" -> KLineBuiltInIndicators.EMA.instance("ema-$name", "price")
             else -> KLineBuiltInIndicators.MA.instance("ma5", "price", listOf(5.0))
         })
         if (name == "MA") {
@@ -61,7 +64,8 @@ class IndicatorSwitchPage : KLineBaseDemoPage() {
     private fun applySubIndicator(dsl: KLineChartDsl, name: String) {
         dsl.indicator(when (name) {
             "MACD" -> KLineBuiltInIndicators.MACD.instance("macd", subPaneId, listOf(12.0, 26.0, 9.0))
-            "KDJ" -> KLineBuiltInIndicators.KDJ.instance("kdj", subPaneId, listOf(9.0, 3.0, 3.0))
+            "CCI" -> KLineBuiltInIndicators.CCI.instance("cci", subPaneId, listOf(14.0))
+            "KDJ" -> KLineBuiltInIndicators.KDJ.instance("kdj", subPaneId)
             else -> KLineBuiltInIndicators.VOLUME.instance("vol", subPaneId, emptyList())
         })
     }
@@ -73,18 +77,22 @@ class IndicatorSwitchPage : KLineBaseDemoPage() {
 
     override fun onToolbarAction(actionId: String) {
         when (actionId) {
-            "main_ma", "main_boll", "main_expma" -> {
+            "main_ma", "main_boll", "main_sar", "main_ema" -> {
                 val next = actionId.substringAfter("main_").uppercase()
-                listOf("ma5", "ma10", "ma20", "boll-MA", "boll-BOLL", "boll-EXPMA", "exp-MA", "exp-BOLL", "exp-EXPMA")
-                    .forEach { controller.removeIndicator(it) }
+                listOf(
+                    "ma5", "ma10", "ma20",
+                    "boll-MA", "boll-BOLL", "boll-SAR", "boll-EMA",
+                    "sar-MA", "sar-BOLL", "sar-SAR", "sar-EMA",
+                    "ema-MA", "ema-BOLL", "ema-SAR", "ema-EMA",
+                ).forEach { controller.removeIndicator(it) }
                 val dsl = KLineChartDsl()
                 applyMainIndicator(dsl, next)
                 dsl.indicators.forEach { controller.addIndicator(it) }
                 mainIndicator = next
             }
-            "sub_vol", "sub_macd", "sub_kdj" -> {
+            "sub_vol", "sub_macd", "sub_cci", "sub_kdj" -> {
                 val next = actionId.substringAfter("sub_").uppercase()
-                controller.removeIndicator("vol"); controller.removeIndicator("macd"); controller.removeIndicator("kdj")
+                listOf("vol", "macd", "cci", "kdj").forEach { controller.removeIndicator(it) }
                 val dsl = KLineChartDsl()
                 applySubIndicator(dsl, next)
                 dsl.indicators.forEach { controller.addIndicator(it) }

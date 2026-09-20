@@ -144,7 +144,7 @@ struct KRKLineChartComponent {
       Canvas(this.canvasContext)
         .width('100%')
         .height('100%')
-        .backgroundColor('#FFFFFF')
+        .backgroundColor('#00000000')
         .onReady(() => this.resizeAndDraw())
         .onAreaChange((_oldValue: Area, newValue: Area) => {
           this.canvasWidth = vp2px(Number(newValue.width));

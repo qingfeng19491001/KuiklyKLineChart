@@ -1,6 +1,29 @@
 package com.tencent.kuiklybase.kline
 
-enum class KLinePriceStyle { CANDLE, LINE }
+enum class KLinePriceStyle {
+    CANDLE,
+    CANDLE_HOLLOW,
+    CANDLE_UP_STROKE,
+    CANDLE_DOWN_STROKE,
+    OHLC,
+    LINE,
+    AREA,
+    ;
+
+    companion object {
+        fun parse(name: String): KLinePriceStyle = when (
+            name.trim().lowercase().replace('-', '_')
+        ) {
+            "line" -> LINE
+            "area" -> AREA
+            "ohlc" -> OHLC
+            "candle_hollow", "candle_stroke", "hollow" -> CANDLE_HOLLOW
+            "candle_up_stroke", "up_stroke" -> CANDLE_UP_STROKE
+            "candle_down_stroke", "down_stroke" -> CANDLE_DOWN_STROKE
+            else -> CANDLE
+        }
+    }
+}
 
 /** Immutable rendering/interaction presets sharing the same planner and pipeline. */
 enum class KLineChartMode(

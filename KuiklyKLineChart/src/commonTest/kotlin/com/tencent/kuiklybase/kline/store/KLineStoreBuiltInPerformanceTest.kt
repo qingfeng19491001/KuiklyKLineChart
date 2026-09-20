@@ -158,17 +158,24 @@ class KLineStoreBuiltInPerformanceTest {
     }
 
     private fun performanceParams(name: String): List<Double> = when (name) {
-        "MA", "EXPMA", "VOL", "RSI", "WR" -> listOf(1.0)
+        "MA", "EXPMA", "VOL", "RSI", "WR", "SMA", "EMA", "CCI", "DMI", "BIAS", "ROC", "BRAR" -> listOf(1.0)
         "BOLL" -> listOf(1.0, 2.0)
         "BBI" -> listOf(1.0, 1.0, 1.0, 1.0)
         "ENE" -> listOf(1.0, 11.0, 9.0)
         "MACD" -> listOf(1.0, 2.0, 1.0)
         "KDJ" -> listOf(1.0, 1.0, 1.0)
         "BBD" -> listOf(1.0, 1.0)
+        "SAR" -> listOf(2.0, 2.0, 20.0)
+        "CR" -> listOf(1.0, 1.0, 1.0, 1.0, 1.0)
+        "EMV", "MTM", "PSY", "VR", "AO", "TRIX" -> listOf(1.0, 1.0)
+        "DMA" -> listOf(1.0, 1.0, 1.0)
         else -> emptyList()
     }
 
     companion object {
-        private val FINITE_NAMES = setOf("MA", "BOLL", "BBI", "ENE", "VOL", "AMOUNT", "WR")
+        private val FINITE_NAMES = setOf(
+            "MA", "BOLL", "BBI", "ENE", "VOL", "AMOUNT", "WR", "SMA", "CCI", "BIAS", "ROC",
+            "BRAR", "CR", "DMA", "EMV", "MTM", "PSY", "VR", "AO",
+        )
     }
 }

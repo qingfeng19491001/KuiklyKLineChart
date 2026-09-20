@@ -65,7 +65,7 @@ class KLineIndicatorEngineTest {
     @Test
     fun builtInTemplatesExposeCompleteIndicatorFamiliesWithKnownResults() {
         assertEquals(
-            listOf("MA", "BOLL", "EXPMA", "BBI", "ENE", "VOL", "AMOUNT", "MACD", "KDJ", "RSI", "WR", "BBD"),
+            listOf("MA", "BOLL", "EXPMA", "BBI", "ENE", "SMA", "EMA", "SAR", "VOL", "AMOUNT", "OBV", "MACD", "KDJ", "RSI", "WR", "BBD", "CCI", "DMI", "BIAS", "ROC", "BRAR", "CR", "DMA", "EMV", "MTM", "PSY", "TRIX", "VR", "AO", "PVT", "AVP"),
             KLineBuiltInIndicators.templates.map(KLineIndicatorTemplate::name),
         )
 
@@ -112,6 +112,29 @@ class KLineIndicatorEngineTest {
         val bbdBars = (1L..5L).map { index -> bar(index, index.toDouble(), volume = 100.0) }
         val bbd = KLineBbdIndicator.calculate(bbdBars, listOf(5.0, 5.0))
         assertClose(66.66666666666667, bbd.figures[0].values.last())
+
+        val sma = KLineSmaIndicator.calculate(rising, listOf(5.0))
+        assertClose(22.0, sma.figures.single().values.last())
+        assertClose(
+            KLineExpmaIndicator.calculate(rising, listOf(12.0)).figures.single().values.last()!!,
+            KLineEmaIndicator.calculate(rising, listOf(12.0)).figures.single().values.last(),
+        )
+        val obv = KLineObvIndicator.calculate(volumeBars, emptyList()).figures.single().values
+        assertEquals(listOf(10.0, 30.0, 60.0), obv)
+        val cci = KLineCciIndicator.calculate(rising, listOf(14.0)).figures.single().values
+        assertTrue(cci.take(13).all { it == null })
+        assertTrue(cci.last() != null)
+        assertTrue(KLineSarIndicator.calculate(rising, emptyList()).figures.single().values.last() != null)
+        assertTrue(KLineBiasIndicator.calculate(rising, listOf(6.0)).figures.single().values.last() != null)
+        val dmi = KLineDmiIndicator.calculate((1L..40L).map { index -> bar(index, index.toDouble()) }, listOf(14.0))
+        assertTrue(dmi.figures.all { figure -> figure.values.last() != null })
+        val rocBars = (0L..12L).map { index -> bar(index, if (index == 12L) 20.0 else 10.0) }
+        assertClose(100.0, KLineRocIndicator.calculate(rocBars, listOf(12.0)).figures.single().values.last())
+        assertTrue(KLineBrarIndicator.calculate((1L..30L).map { index -> bar(index, index.toDouble()) }, emptyList()).figures[1].values.last() != null)
+        assertTrue(KLineDmaIndicator.calculate((1L..60L).map { bar(it, it.toDouble()) }, emptyList()).figures[0].values.last() != null)
+        assertTrue(KLineAoIndicator.calculate((1L..40L).map { bar(it, it.toDouble(), high = it.toDouble() + 1, low = it.toDouble() - 1) }, emptyList()).figures.single().values.last() != null)
+        assertTrue(KLinePvtIndicator.calculate(volumeBars, emptyList()).figures.single().values.last() != null)
+        assertEquals(999.0 / 60.0, KLineAvpIndicator.calculate(volumeBars, emptyList()).figures.single().values.last())
         assertClose(66.66666666666667, bbd.figures[1].values.last())
     }
 

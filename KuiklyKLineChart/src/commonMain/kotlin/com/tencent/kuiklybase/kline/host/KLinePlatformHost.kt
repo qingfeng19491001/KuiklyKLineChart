@@ -166,7 +166,7 @@ public class KLinePlatformHost(
                 true
             }
             KLineChartView.PROP_PRICE_STYLE -> {
-                configuredPriceStyle = if (propValue.equals("line", true)) KLinePriceStyle.LINE else KLinePriceStyle.CANDLE
+                configuredPriceStyle = com.tencent.kuiklybase.kline.KLinePriceStyle.parse(propValue)
                 innerView.engine.setPriceStyle(configuredPriceStyle)
                 onInvalidate()
                 true
@@ -233,6 +233,8 @@ public class KLinePlatformHost(
                         canonicalizeOverlayTemplateName(value.optString("templateName")),
                         value.optString("paneId", "price"),
                         magnetMode(value.optString("magnetMode")),
+                        groupId = value.optString("groupId").ifBlank { null },
+                        locked = value.optBoolean("locked", false),
                     )
                     emptyMap()
                 }
@@ -258,6 +260,7 @@ public class KLinePlatformHost(
                     emptyMap()
                 }
                 KLineChartView.METHOD_REMOVE_OVERLAY -> { controller.removeOverlay(value.optString("id")); emptyMap() }
+                KLineChartView.METHOD_REMOVE_OVERLAY_GROUP -> { controller.removeOverlayGroup(value.optString("groupId")); emptyMap() }
                 KLineChartView.METHOD_EXPORT_STATE -> stateToMap(controller.exportState())
                 KLineChartView.METHOD_RESTORE_STATE -> { controller.restoreState(parseState(value)); emptyMap() }
                 else -> {

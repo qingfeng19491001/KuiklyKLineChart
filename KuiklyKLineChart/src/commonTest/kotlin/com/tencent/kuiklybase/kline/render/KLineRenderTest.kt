@@ -225,6 +225,28 @@ class KLineRenderTest {
         assertTrue(sink.primitives.isEmpty())
     }
 
+    @Test
+    fun priceStylesEmitHollowOhlcAndAreaGeometry() {
+        val snapshot = snapshot(listOf(bar(0, 12.0), bar(1, 9.0)), KLineViewport(0.0, 1.0, 40.0, 0.0))
+        val hollow = KLinePrimitiveListSink().also {
+            KLineCandleRenderer().render(planner().create(snapshot, BOUNDS, priceStyle = com.tencent.kuiklybase.kline.KLinePriceStyle.CANDLE_HOLLOW), it)
+        }
+        assertTrue(hollow.primitives.none { it is KLineDrawingPrimitive.Candle })
+        assertTrue(hollow.primitives.any { it is KLineDrawingPrimitive.Rect && it.fillColor == "#00000000" })
+
+        val ohlc = KLinePrimitiveListSink().also {
+            KLineCandleRenderer().render(planner().create(snapshot, BOUNDS, priceStyle = com.tencent.kuiklybase.kline.KLinePriceStyle.OHLC), it)
+        }
+        assertTrue(ohlc.primitives.none { it is KLineDrawingPrimitive.Candle })
+        assertTrue(ohlc.primitives.count { it is KLineDrawingPrimitive.Line && it.layer == KLineRenderLayer.CANDLE } >= 6)
+
+        val area = KLinePrimitiveListSink().also {
+            KLineCandleRenderer().render(planner().create(snapshot, BOUNDS, priceStyle = com.tencent.kuiklybase.kline.KLinePriceStyle.AREA), it)
+        }
+        assertTrue(area.primitives.any { it is KLineDrawingPrimitive.Rect })
+        assertTrue(area.primitives.any { it is KLineDrawingPrimitive.Polyline })
+    }
+
     private fun planner() = KLineRenderPlanner(
         KLineExtensionRegistry(KLineBuiltInIndicators.templates, KLineBuiltInOverlays.templates),
     )
