@@ -3,7 +3,6 @@ package com.kuikly.kuiklyklinechart.shared.demo
 import com.tencent.kuikly.core.annotations.Page
 import com.tencent.kuikly.core.base.Color
 import com.tencent.kuikly.core.base.ViewBuilder
-import com.tencent.kuikly.core.views.Text
 import com.tencent.kuikly.core.views.View
 import com.tencent.kuiklybase.kline.view.KLineChart
 
@@ -22,14 +21,6 @@ internal class MinimalLibrarySamplePage : ShowcasePage() {
         return {
             View {
                 attr { flex(1f); backgroundColor(Color(0xFFF8FAFC)) }
-                Text {
-                    attr {
-                        text("KLineChart · MA + VOL · 日K")
-                        fontSize(13f)
-                        color(Color(0xFF64748B))
-                        margin(12f)
-                    }
-                }
                 View {
                     attr { flex(1f); marginLeft(8f); marginRight(8f); marginBottom(12f); backgroundColor(Color.WHITE) }
                     KLineChart {

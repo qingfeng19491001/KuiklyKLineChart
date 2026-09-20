@@ -29,6 +29,7 @@ internal fun interface KLineRenderer { fun render(plan: KLineRenderPlan, sink: K
 
 internal class KLineGridRenderer : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
+        if (!plan.features.axisLabels) return
         val stroke = KLineStroke(plan.theme.grid.color, plan.theme.grid.lineWidth, frozenList(plan.theme.grid.lineDash))
         plan.panes.forEach { pane ->
             for (step in 0..4) { val y = pane.rect.top + pane.rect.height * step / 4.0; sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.GRID, KLinePoint(pane.rect.left, y), KLinePoint(pane.rect.right, y), stroke)) }
@@ -45,6 +46,9 @@ internal class KLineCandleRenderer : KLineRenderer {
             com.tencent.kuiklybase.kline.KLinePriceStyle.LINE -> {
                 if (closePoints.size >= 2) {
                     sink.draw(KLineDrawingPrimitive.Polyline(KLineRenderLayer.CANDLE, closePoints, KLineStroke(lineColor, 1.5)))
+                }
+                closePoints.lastOrNull()?.let { last ->
+                    sink.draw(KLineDrawingPrimitive.Circle(KLineRenderLayer.CANDLE, last, 2.5, lineColor))
                 }
                 return
             }
@@ -64,6 +68,9 @@ internal class KLineCandleRenderer : KLineRenderer {
                 }
                 if (closePoints.size >= 2) {
                     sink.draw(KLineDrawingPrimitive.Polyline(KLineRenderLayer.CANDLE, closePoints, KLineStroke(lineColor, 1.5)))
+                }
+                closePoints.lastOrNull()?.let { last ->
+                    sink.draw(KLineDrawingPrimitive.Circle(KLineRenderLayer.CANDLE, last, 2.5, lineColor))
                 }
                 return
             }
@@ -289,9 +296,9 @@ internal data class AxisTick(val value: Double, val y: Double, val text: String)
 
 internal class KLineAxisRenderer(private val caches: KLineRenderCaches = KLineRenderCaches(), private val measurer: KLineTextMeasurer = KLineApproximateTextMeasurer) : KLineRenderer {
     override fun render(plan: KLineRenderPlan, sink: KLinePrimitiveSink) {
+        if (!plan.features.axisLabels) return
         plan.panes.forEach { pane ->
             sink.draw(KLineDrawingPrimitive.Line(KLineRenderLayer.AXIS, KLinePoint(pane.rect.right, pane.rect.top), KLinePoint(pane.rect.right, pane.rect.bottom), KLineStroke(plan.theme.axis.lineColor, 1.0)))
-            if (!plan.features.axisLabels) return@forEach
             val key = AxisTickKey(pane.axis.minValue, pane.axis.maxValue, pane.rect.top, pane.rect.bottom, plan.formatters.hashCode())
             val ticks = caches.ticks[key]?.also { caches.tickHits++ } ?: buildTicks(plan, pane).also { caches.ticks[key] = it; caches.tickMisses++ }
             var previousBottom = Double.NEGATIVE_INFINITY

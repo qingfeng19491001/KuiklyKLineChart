@@ -37,6 +37,17 @@ class DemoPopupPlacementTest {
     }
 
     @Test
+    fun compactCardBarsMatchQuotedLastCandle() {
+        val bars = compactCardBars()
+        val last = bars.last()
+        assertEquals(48, bars.size)
+        assertEquals(486.20, last.close)
+        assertEquals(477.20, last.open)
+        assertEquals(489.80, last.high)
+        assertEquals(475.60, last.low)
+    }
+
+    @Test
     fun task2ShowcasesExposeChatCardAndSignalDetailInformation() {
         assertEquals(
             listOf("股票", "最新价", "涨跌幅", "周期", "AI摘要", "详情入口"),

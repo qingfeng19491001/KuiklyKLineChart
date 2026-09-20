@@ -51,9 +51,9 @@ class KLineChartModeTest {
         assertFalse(plan.features.tooltip)
 
         val sink = KLinePrimitiveListSink()
+        KLineGridRenderer().render(plan, sink)
         KLineAxisRenderer().render(plan, sink)
-        assertTrue(sink.primitives.any { it is KLineDrawingPrimitive.Line && it.layer == KLineRenderLayer.AXIS })
-        assertFalse(sink.primitives.any { it is KLineDrawingPrimitive.Text && it.layer == KLineRenderLayer.AXIS })
+        assertTrue(sink.primitives.isEmpty())
     }
 
     @Test

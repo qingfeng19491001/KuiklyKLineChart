@@ -27,6 +27,24 @@ import com.tencent.kuiklybase.kline.view.KLineChart
 
 private val showcaseBars = RandomBarGenerator.defaultSymbolBars(count = 120)
 private val showcaseBarsJson = encodeBars(showcaseBars)
+private val compactCardBarsJson = encodeBars(compactCardBars())
+
+internal fun compactCardBars(): List<KLineBar> {
+    val source = showcaseBars.takeLast(48)
+    val scale = 486.20 / source.last().close
+    val scaled = source.map { bar ->
+        bar.copy(
+            open = roundDemoPrice(bar.open * scale),
+            high = roundDemoPrice(bar.high * scale),
+            low = roundDemoPrice(bar.low * scale),
+            close = roundDemoPrice(bar.close * scale),
+        )
+    }
+    val last = scaled.last()
+    return scaled.dropLast(1) + last.copy(open = 477.20, high = 489.80, low = 475.60, close = 486.20)
+}
+
+private fun roundDemoPrice(value: Double): Double = kotlin.math.round(value * 100.0) / 100.0
 
 private enum class DemoPeriod(val label: String, val span: Int, val unit: String, val line: Boolean = false) {
     TIME("分时", 1, "minute", true), FIVE_DAY("五日", 5, "day", true), DAY("日K", 1, "day"), WEEK("周K", 1, "week"), MONTH("月K", 1, "month"),
@@ -606,8 +624,19 @@ internal class CompactChartDemo : ShowcasePage() {
                     }
                 }
                 View {
-                    attr { height(158f); marginTop(5f); backgroundColor(Color(0xFFF8FAFC)); borderRadius(10f); padding(6f) }
-                    KLineChart { attr { flex(1f); symbol("00700"); period(1, "day"); mode("compact"); bars(showcaseBarsJson) } }
+                    attr { height(168f); marginTop(8f); backgroundColor(Color.WHITE); borderRadius(10f) }
+                    KLineChart {
+                        attr {
+                            flex(1f)
+                            backgroundColor(Color.WHITE)
+                            symbol("00700", "腾讯控股")
+                            period(1, "day")
+                            mode("compact")
+                            theme("light")
+                            priceStyle("candle")
+                            bars(compactCardBarsJson)
+                        }
+                    }
                 }
                 View {
                     attr { marginTop(10f); padding(10f); borderRadius(8f); backgroundColor(Color(0xFFF0F7FF)) }
