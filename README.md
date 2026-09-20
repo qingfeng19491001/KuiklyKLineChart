@@ -15,7 +15,7 @@
 - 交互：画线控制点 > 图形 > 十字光标 > 分隔条 > 缩放 > 平移 > 点击。
 - 可扩展：`KLineExtensionRegistry` 注册自定义指标与画线模板；Store / Render / Interaction 内核类型不对外。
 
-## 安装
+## 使用
 
 当前可解析坐标在 GitHub Pages 公开 Maven（无需账号密码）。`com.tencent.kuiklybase` 是纳入官方仓之后的目标坐标，现网尚未发布。
 
