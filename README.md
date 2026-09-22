@@ -18,8 +18,11 @@
 
 ## 快速开始
 先接一次组件：共享代码里加上 K 线依赖。Android 注册一次，iOS 装一个 pod，鸿蒙用 map.set 挂上同名原生 View。之后每个页面不用再注册。
+
 页面中间放一个 KLineChart。mode("full") 是完整图，带坐标轴、副图和手势；compact 只留主图。priceStyle 只决定蜡烛、折线还是面积。均线、成交量、MACD 用 config 或 addIndicator 另挂。
+
 K 线数据用 bars(json) 或 KLineDataSource 传进去。滑、捏、长按不用再写。周期按钮自己做，点了就换周期、画法和数据。要知道用户点了哪根、十字光标在哪，接 onBarClick 和 onCrosshairChange。
+
 
 
 当前坐标在 GitHub Pages 公开 Maven。`com.tencent.kuiklybase` 是纳入官方仓之后的目标坐标，现网尚未发布。
